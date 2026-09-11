@@ -2,7 +2,6 @@ import express from 'express';
 import path from 'path';
 import fs from 'fs';
 import JSZip from 'jszip';
-import { createServer as createViteServer } from 'vite';
 
 const app = express();
 const PORT = 3000;
@@ -78,6 +77,15 @@ function getCallbackRedirectUri(req: express.Request): string {
 }
 
 // Healthcheck
+app.get(['/api', '/api/'], (_req, res) => {
+  res.json({
+    status: 'ok',
+    service: 'Kitek Discord Bot API',
+    discordClientId: DISCORD_CLIENT_ID,
+    timestamp: new Date().toISOString(),
+  });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({
     status: 'ok',
@@ -1041,6 +1049,8 @@ app.get('/auth/callback/', handleOAuthCallback);
 // Vite middleware / static files
 async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
+    const vitePkg = 'vite';
+    const { createServer: createViteServer } = await import(vitePkg);
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
