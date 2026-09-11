@@ -1,39 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, UserPlus, Check, Sparkles, MessageSquare, Shield, Send, Hash } from 'lucide-react';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { CustomSwitch } from './CustomSwitch';
+import { DiscordServer } from '../types';
 
 interface WelcomeSystemModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSaveNotice: (msg: string) => void;
+  server?: DiscordServer;
 }
-
-const MODAL_CHANNELS: SelectOption[] = [
-  { value: '#powitania', label: '#powitania', prefix: '#' },
-  { value: '#witamy', label: '#witamy', prefix: '#' },
-  { value: '#general', label: '#general', prefix: '#' },
-  { value: '#chat', label: '#chat', prefix: '#' },
-];
-
-const MODAL_ROLES: SelectOption[] = [
-  { value: '@Użytkownik', label: '@Użytkownik', prefix: '@' },
-  { value: '@Członek', label: '@Członek', prefix: '@' },
-  { value: '@Nowy', label: '@Nowy', prefix: '@' },
-  { value: 'Brak (Wyłączone)', label: 'Brak (Wyłączone)' },
-];
 
 export const WelcomeSystemModal = ({
   isOpen,
   onClose,
   onSaveNotice,
+  server,
 }: WelcomeSystemModalProps) => {
+  const serverChannels = server?.channels ?? [];
+  const serverRoles = server?.roles ?? [];
+
+  const modalChannelOptions: SelectOption[] = serverChannels.map((ch) => ({
+    value: ch.name,
+    label: ch.name,
+    prefix: '#',
+  }));
+
+  const modalRoleOptions: SelectOption[] = serverRoles.length > 0
+    ? [
+        { value: 'Brak', label: 'Brak (Wyłączone)' },
+        ...serverRoles.map((r) => ({
+          value: r.name,
+          label: r.name,
+          prefix: '@',
+        })),
+      ]
+    : [];
+
   const [isEnabled, setIsEnabled] = useState(true);
-  const [channel, setChannel] = useState('#powitania');
+  const [channel, setChannel] = useState<string>(serverChannels[0]?.name || '');
   const [welcomeMessage, setWelcomeMessage] = useState('Witaj {user} na serwerze {server}! Cieszymy się, że z nami jesteś. Jesteś naszym {memberCount}. kotkiem! 🐱');
-  const [autoRole, setAutoRole] = useState('@Użytkownik');
+  const [autoRole, setAutoRole] = useState<string>(serverRoles[0]?.name || 'Brak');
   const [sendDM, setSendDM] = useState(false);
+
+  useEffect(() => {
+    if (serverChannels.length > 0) {
+      if (!serverChannels.some((c) => c.name === channel)) {
+        setChannel(serverChannels[0].name);
+      }
+    } else {
+      setChannel('');
+    }
+
+    if (serverRoles.length > 0) {
+      if (!serverRoles.some((r) => r.name === autoRole) && autoRole !== 'Brak') {
+        setAutoRole(serverRoles[0].name);
+      }
+    } else {
+      setAutoRole('');
+    }
+  }, [server?.id, serverChannels.length, serverRoles.length]);
 
   const handleSave = () => {
     onSaveNotice('Konfiguracja modułu Welcome System została pomyślnie zapisana!');
@@ -113,8 +140,10 @@ export const WelcomeSystemModal = ({
                 <CustomSelect
                   value={channel}
                   onChange={setChannel}
-                  options={MODAL_CHANNELS}
+                  options={modalChannelOptions}
                   icon={Hash}
+                  placeholder={modalChannelOptions.length === 0 ? "Brak kanałów na serwerze" : "Wybierz kanał"}
+                  disabled={modalChannelOptions.length === 0}
                   ariaLabel="Wybierz kanał powitań"
                 />
               </div>
@@ -147,8 +176,10 @@ export const WelcomeSystemModal = ({
                 <CustomSelect
                   value={autoRole}
                   onChange={setAutoRole}
-                  options={MODAL_ROLES}
+                  options={modalRoleOptions}
                   icon={Shield}
+                  placeholder={modalRoleOptions.length === 0 ? "Brak ról na serwerze" : "Wybierz automatyczną rolę"}
+                  disabled={modalRoleOptions.length === 0}
                   ariaLabel="Wybierz automatyczną rolę"
                 />
               </div>

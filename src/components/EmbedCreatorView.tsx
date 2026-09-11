@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Sparkles,
@@ -16,33 +16,50 @@ import { CustomSelect, SelectOption } from './CustomSelect';
 import { MessageStyleEditor } from './MessageStyleEditor';
 import { DiscordPreview } from './DiscordPreview';
 import { MessageContainer, EmbedConfig } from '../types/embed';
+import { DiscordServer } from '../types';
 
 interface EmbedCreatorViewProps {
   onBackToDashboard: () => void;
+  server?: DiscordServer;
 }
 
-const SEND_CHANNELS: SelectOption[] = [
-  { value: '#ogłoszenia', label: '#ogłoszenia (Ważne ogłoszenia)' },
-  { value: '#regulamin', label: '#regulamin (Zasady serwera)' },
-  { value: '#aktualności', label: '#aktualności' },
-  { value: '#role', label: '#role (Wybór ról)' },
-  { value: '#witamy', label: '#witamy (Powitalnia)' },
-  { value: '#pomoc', label: '#pomoc' },
-  { value: '#czat-ogólny', label: '#czat-ogólny' },
-];
+export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDashboard, server }) => {
+  const serverChannels = server?.channels ?? [];
+  const serverRoles = server?.roles ?? [];
 
-const MENTION_OPTIONS: SelectOption[] = [
-  { value: 'none', label: 'Brak wzmianki' },
-  { value: '@everyone', label: '@everyone (Wszyscy na serwerze)' },
-  { value: '@here', label: '@here (Aktywni na serwerze)' },
-  { value: '@NowyKotek', label: '@NowyKotek (Nowi członkowie)' },
-];
+  const sendChannels: SelectOption[] = serverChannels.map((ch) => ({
+    value: ch.name,
+    label: ch.name,
+    prefix: '#',
+  }));
 
-export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDashboard }) => {
-  const [selectedChannel, setSelectedChannel] = useState<string>('#ogłoszenia');
+  const mentionOptions: SelectOption[] = [
+    { value: 'none', label: 'Brak wzmianki' },
+    { value: '@everyone', label: '@everyone (Wszyscy na serwerze)' },
+    { value: '@here', label: '@here (Aktywni na serwerze)' },
+    ...serverRoles.map((r) => ({
+      value: r.name,
+      label: `${r.name} (Rola)`,
+      prefix: '@',
+    })),
+  ];
+
+  const [selectedChannel, setSelectedChannel] = useState<string>(
+    serverChannels[0]?.name || ''
+  );
   const [selectedMention, setSelectedMention] = useState<string>('none');
   const [plainTextMessage, setPlainTextMessage] = useState<string>('📢 Witajcie kotki! Mamy dla Was ważne ogłoszenie.');
   const [isSending, setIsSending] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (serverChannels.length > 0) {
+      if (!serverChannels.some((c) => c.name === selectedChannel)) {
+        setSelectedChannel(serverChannels[0].name);
+      }
+    } else {
+      setSelectedChannel('');
+    }
+  }, [server?.id, serverChannels.length]);
   const [notification, setNotification] = useState<string | null>(null);
 
   // Kontenery Embed v2
@@ -318,7 +335,9 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
               <CustomSelect
                 value={selectedChannel}
                 onChange={setSelectedChannel}
-                options={SEND_CHANNELS}
+                options={sendChannels}
+                placeholder={sendChannels.length === 0 ? "Brak kanałów na serwerze" : "Wybierz kanał docelowy"}
+                disabled={sendChannels.length === 0}
                 icon={Hash}
                 ariaLabel="Wybierz kanał docelowy"
               />
@@ -333,7 +352,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
               <CustomSelect
                 value={selectedMention}
                 onChange={setSelectedMention}
-                options={MENTION_OPTIONS}
+                options={mentionOptions}
                 icon={Bell}
                 ariaLabel="Wybierz wzmiankę"
               />

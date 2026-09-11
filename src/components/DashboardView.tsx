@@ -158,16 +158,27 @@ export const DashboardView = ({
                 <span>Zmień serwer ({servers.length})</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => {
-                window.open(getBotInviteUrl(currentServer?.id), '_blank');
-              }}
-              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            >
-              <ExternalLink className="w-3.5 h-3.5" />
-              <span>Dodaj bota na Discord</span>
-            </button>
+            {currentServer?.botJoined ? (
+              <div className="px-3.5 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-semibold flex items-center gap-2 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span>Bot aktywny na serwerze</span>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(getBotInviteUrl(currentServer?.id), '_blank');
+                  if (currentServer?.id && onMarkBotJoined) {
+                    onMarkBotJoined(currentServer.id);
+                  }
+                  showNotification(`Pomyślnie dodano bota do ${currentServer?.name || 'serwera'}! Przycisk dodawania został ukryty.`);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+              >
+                <ExternalLink className="w-3.5 h-3.5" />
+                <span>Dodaj bota na Discord</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -182,7 +193,7 @@ export const DashboardView = ({
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-zinc-100">Bot nie jest jeszcze na tym serwerze</span>
                   <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">
-                    OPCJONALNIE
+                    WYMAGANE DO DZIAŁANIA
                   </span>
                 </div>
                 <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
@@ -193,11 +204,17 @@ export const DashboardView = ({
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => window.open(getBotInviteUrl(currentServer?.id), '_blank')}
+                onClick={() => {
+                  window.open(getBotInviteUrl(currentServer?.id), '_blank');
+                  if (currentServer?.id && onMarkBotJoined) {
+                    onMarkBotJoined(currentServer.id);
+                  }
+                  showNotification(`Pomyślnie dodano bota do ${currentServer.name}!`);
+                }}
                 className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-black font-bold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all"
               >
                 <Bot className="w-4 h-4" />
-                <span>Zaproś bota</span>
+                <span>Dodaj bota & Aktywuj</span>
               </button>
             </div>
           </div>
@@ -474,6 +491,7 @@ export const DashboardView = ({
       {/* Fallback Interactive Welcome System Modal */}
       <WelcomeSystemModal
         isOpen={isWelcomeOpen}
+        server={currentServer}
         onClose={handleCloseWelcome}
         onSaveNotice={showNotification}
       />

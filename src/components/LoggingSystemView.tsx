@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   Sparkles,
@@ -24,9 +24,11 @@ import { CustomSwitch } from './CustomSwitch';
 import { CustomSelect, SelectOption } from './CustomSelect';
 import { DiscordPreview } from './DiscordPreview';
 import { EmbedConfig } from '../types/embed';
+import { DiscordServer } from '../types';
 
 interface LoggingSystemViewProps {
   onBackToDashboard: () => void;
+  server?: DiscordServer;
 }
 
 export type LogFormatType = 'text' | 'embed_v2';
@@ -40,30 +42,61 @@ interface LogEventItem {
   channel?: string;
 }
 
-const LOG_CHANNELS: SelectOption[] = [
-  { value: '#logi-serwera', label: '#logi-serwera (Główny)' },
-  { value: '#mod-log', label: '#mod-log (Moderacja)' },
-  { value: '#logi-wiadomości', label: '#logi-wiadomości' },
-  { value: '#logi-użytkowników', label: '#logi-użytkowników' },
-  { value: '#logi-głosowe', label: '#logi-głosowe' },
-];
+export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDashboard, server }) => {
+  const serverChannels = server?.channels ?? [];
 
-export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDashboard }) => {
+  const logChannelOptions: SelectOption[] = serverChannels.map((ch) => ({
+    value: ch.name,
+    label: ch.name,
+    prefix: '#',
+  }));
+
   const [loggingEnabled, setLoggingEnabled] = useState<boolean>(true);
   const [logFormat, setLogFormat] = useState<LogFormatType>('embed_v2');
-  const [globalChannel, setGlobalChannel] = useState<string>('#logi-serwera');
+  const [globalChannel, setGlobalChannel] = useState<string>(
+    serverChannels[0]?.name || ''
+  );
   const [useSeparateChannels, setUseSeparateChannels] = useState<boolean>(false);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [notification, setNotification] = useState<string | null>(null);
 
   // Kategoria dedykowanych kanałów
-  const [categoryChannels, setCategoryChannels] = useState<Record<string, string>>({
-    messages: '#logi-wiadomości',
-    members: '#logi-użytkowników',
-    moderation: '#mod-log',
-    server: '#logi-serwera',
-    voice: '#logi-głosowe',
+  const [categoryChannels, setCategoryChannels] = useState<Record<string, string>>(() => {
+    const ch = (idx: number) => serverChannels[idx]?.name || serverChannels[0]?.name || '';
+    return {
+      messages: ch(0),
+      members: ch(1),
+      moderation: ch(2),
+      server: ch(3),
+      voice: ch(4),
+    };
   });
+
+  useEffect(() => {
+    if (serverChannels.length > 0) {
+      if (!serverChannels.some((c) => c.name === globalChannel)) {
+        setGlobalChannel(serverChannels[0].name);
+      }
+      setCategoryChannels((prev) => {
+        const next = { ...prev };
+        Object.keys(next).forEach((k, idx) => {
+          if (!serverChannels.some((c) => c.name === next[k])) {
+            next[k] = serverChannels[idx % serverChannels.length]?.name || serverChannels[0].name;
+          }
+        });
+        return next;
+      });
+    } else {
+      setGlobalChannel('');
+      setCategoryChannels({
+        messages: '',
+        members: '',
+        moderation: '',
+        server: '',
+        voice: '',
+      });
+    }
+  }, [server?.id, serverChannels.length]);
 
   // Lista zdarzeń logowania (bogaty wybór!)
   const [events, setEvents] = useState<LogEventItem[]>([
@@ -545,8 +578,10 @@ export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDa
                 <CustomSelect
                   value={globalChannel}
                   onChange={setGlobalChannel}
-                  options={LOG_CHANNELS}
+                  options={logChannelOptions}
                   icon={Hash}
+                  placeholder={logChannelOptions.length === 0 ? "Brak kanałów na serwerze" : "Wybierz główny kanał logów"}
+                  disabled={logChannelOptions.length === 0}
                   ariaLabel="Wybierz główny kanał logów"
                 />
               </div>
@@ -562,7 +597,9 @@ export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDa
                     onChange={(val) =>
                       setCategoryChannels({ ...categoryChannels, messages: val })
                     }
-                    options={LOG_CHANNELS}
+                    options={logChannelOptions}
+                    placeholder={logChannelOptions.length === 0 ? "Brak kanałów" : "Wybierz kanał"}
+                    disabled={logChannelOptions.length === 0}
                     icon={Hash}
                   />
                 </div>
@@ -577,7 +614,9 @@ export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDa
                     onChange={(val) =>
                       setCategoryChannels({ ...categoryChannels, members: val })
                     }
-                    options={LOG_CHANNELS}
+                    options={logChannelOptions}
+                    placeholder={logChannelOptions.length === 0 ? "Brak kanałów" : "Wybierz kanał"}
+                    disabled={logChannelOptions.length === 0}
                     icon={Hash}
                   />
                 </div>
@@ -592,7 +631,9 @@ export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDa
                     onChange={(val) =>
                       setCategoryChannels({ ...categoryChannels, moderation: val })
                     }
-                    options={LOG_CHANNELS}
+                    options={logChannelOptions}
+                    placeholder={logChannelOptions.length === 0 ? "Brak kanałów" : "Wybierz kanał"}
+                    disabled={logChannelOptions.length === 0}
                     icon={Hash}
                   />
                 </div>
@@ -607,7 +648,9 @@ export const LoggingSystemView: React.FC<LoggingSystemViewProps> = ({ onBackToDa
                     onChange={(val) =>
                       setCategoryChannels({ ...categoryChannels, voice: val })
                     }
-                    options={LOG_CHANNELS}
+                    options={logChannelOptions}
+                    placeholder={logChannelOptions.length === 0 ? "Brak kanałów" : "Wybierz kanał"}
+                    disabled={logChannelOptions.length === 0}
                     icon={Hash}
                   />
                 </div>

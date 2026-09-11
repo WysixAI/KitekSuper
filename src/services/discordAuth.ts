@@ -140,5 +140,7 @@ export function convertDiscordGuildsToServers(guilds: any[]): DiscordServer[] {
       botJoined: Boolean(g.botJoined),
       isRealGuild: true,
       active: Boolean(g.active),
+      channels: g.channels || [],
+      roles: g.roles || [],
     }));
 }

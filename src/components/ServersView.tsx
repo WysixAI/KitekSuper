@@ -17,6 +17,8 @@ import {
   Copy,
   Check,
   Zap,
+  Sliders,
+  Settings,
 } from 'lucide-react';
 import { DiscordServer } from '../types';
 import { CustomSelect } from './CustomSelect';
@@ -82,10 +84,18 @@ export const ServersView = ({
     if (srvId && onMarkBotJoined) {
       onMarkBotJoined(srvId);
     }
+    if (srvId && onSelectServer) {
+      onSelectServer(srvId);
+    }
     if (onInviteBot) {
       onInviteBot(srvId);
     }
-    showToast('Otwarto autoryzację Discord. Po zaakceptowaniu serwer będzie połączony!');
+    showToast('Bot został pomyślnie dodany! Przekierowywanie do konfiguracji...');
+    setTimeout(() => {
+      if (onBackToDashboard) {
+        onBackToDashboard();
+      }
+    }, 400);
   };
 
   const handleCopyCallback = () => {
@@ -282,6 +292,25 @@ export const ServersView = ({
                     {activeServer.hasAdminPermission ? 'Admin / Właściciel' : 'Uprawniony'}
                   </span>
                 </div>
+                {activeServer.botJoined ? (
+                  <button
+                    type="button"
+                    onClick={onBackToDashboard}
+                    className="px-3.5 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                    <span>Konfiguruj ten serwer</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleInviteForServer(activeServer.id)}
+                    className="px-3.5 py-1.5 rounded-lg bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
+                  >
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Dodaj bota & Konfiguruj</span>
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -419,7 +448,7 @@ export const ServersView = ({
                     </div>
                   </div>
 
-                  {/* Przycisk akcji: Invite Bot jeśli brak bota lub Wybierz */}
+                  {/* Przycisk akcji: Invite Bot jeśli brak bota, lub Przejdź do konfiguracji gdy bot dodany */}
                   <div className="pt-4 mt-4 border-t border-[#292e37] flex items-center gap-2">
                     {needsInvite ? (
                       <button
@@ -428,10 +457,10 @@ export const ServersView = ({
                           e.stopPropagation();
                           handleInviteForServer(srv.id);
                         }}
-                        className="w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-md cursor-pointer"
+                        className="w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black shadow-md cursor-pointer"
                       >
                         <Zap className="w-3.5 h-3.5" />
-                        <span>Invite Bot (Zaproś na ten serwer)</span>
+                        <span>Dodaj bota na ten serwer</span>
                       </button>
                     ) : (
                       <button
@@ -439,24 +468,18 @@ export const ServersView = ({
                         onClick={(e) => {
                           e.stopPropagation();
                           handleSwitchServer(srv.id);
+                          if (onBackToDashboard) {
+                            onBackToDashboard();
+                          }
                         }}
-                        className={`w-full py-2 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                        className={`w-full py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer ${
                           isSelected
-                            ? 'bg-emerald-500 text-black shadow-md'
+                            ? 'bg-emerald-500 hover:bg-emerald-400 text-black shadow-md'
                             : 'bg-[#252a32] hover:bg-emerald-500 hover:text-black text-zinc-300'
                         }`}
                       >
-                        {isSelected ? (
-                          <>
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Obecnie wybrany</span>
-                          </>
-                        ) : (
-                          <>
-                            <Server className="w-3.5 h-3.5" />
-                            <span>Wybierz ten serwer</span>
-                          </>
-                        )}
+                        <Sliders className="w-3.5 h-3.5" />
+                        <span>{isSelected ? 'Przejdź do konfiguracji serwera' : 'Wybierz i konfiguruj'}</span>
                       </button>
                     )}
                   </div>

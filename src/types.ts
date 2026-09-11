@@ -22,6 +22,18 @@ export interface DiscordUser {
   isDiscordLogged?: boolean;
 }
 
+export interface ServerChannel {
+  id: string;
+  name: string;
+  type?: 'text' | 'voice' | 'announcement' | 'category';
+}
+
+export interface ServerRole {
+  id: string;
+  name: string;
+  color?: string;
+}
+
 export interface DiscordServer {
   id: string;
   name: string;
@@ -40,6 +52,8 @@ export interface DiscordServer {
   botJoined?: boolean;
   isRealGuild?: boolean;
   active: boolean;
+  channels?: ServerChannel[];
+  roles?: ServerRole[];
 }
 
 export interface BotIdea {

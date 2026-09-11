@@ -1,4 +1,4 @@
-import { useState, ChangeEvent } from 'react';
+import { useState, useEffect, ChangeEvent } from 'react';
 import {
   ArrowLeft,
   Radio,
@@ -15,10 +15,12 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { CustomSwitch } from './CustomSwitch';
-import { CustomSelect } from './CustomSelect';
+import { CustomSelect, SelectOption } from './CustomSelect';
+import { DiscordServer } from '../types';
 
 interface AutoContentSystemViewProps {
   onBackToDashboard: () => void;
+  server?: DiscordServer;
 }
 
 // Kontent to dokładnie: nazwa + (plik LUB link)
@@ -44,17 +46,6 @@ export interface ContentSlot {
   cooldownLabel: string;
 }
 
-const AVAILABLE_CHANNELS = [
-  '#kanał-1',
-  '#kanał-2',
-  '#kanał-3',
-  '#auto-drops',
-  '#programy',
-  '#zasoby-i-pliki',
-  '#darmowe-rzeczy',
-  '#ogłoszenia',
-];
-
 const COOLDOWN_PRESETS = [
   { hours: 0.5, label: 'Co 30 minut' },
   { hours: 1, label: 'Co 1 godzinę' },
@@ -65,7 +56,15 @@ const COOLDOWN_PRESETS = [
   { hours: 48, label: 'Co 48 godzin (2 dni)' },
 ];
 
-export const AutoContentSystemView = ({ onBackToDashboard }: AutoContentSystemViewProps) => {
+export const AutoContentSystemView = ({ onBackToDashboard, server }: AutoContentSystemViewProps) => {
+  const serverChannels = server?.channels ?? [];
+
+  const channelOptions: SelectOption[] = serverChannels.map((ch) => ({
+    value: ch.name,
+    label: ch.name,
+    prefix: '#',
+  }));
+
   const [notification, setNotification] = useState<string | null>(null);
 
   // 1. Biblioteka kontentów (nazwa + plik LUB link)
@@ -103,12 +102,12 @@ export const AutoContentSystemView = ({ onBackToDashboard }: AutoContentSystemVi
   ]);
 
   // 2. Widoczne 3 Ramki (Sloty) z kanałem i czasem cooldown
-  const [slots, setSlots] = useState<ContentSlot[]>([
+  const [slots, setSlots] = useState<ContentSlot[]>(() => [
     {
       id: 1,
       name: 'Ramka 1',
       enabled: true,
-      channel: '#kanał-1',
+      channel: serverChannels[0]?.name || '',
       cooldownHours: 6,
       cooldownLabel: 'Co 6 godzin',
     },
@@ -116,7 +115,7 @@ export const AutoContentSystemView = ({ onBackToDashboard }: AutoContentSystemVi
       id: 2,
       name: 'Ramka 2',
       enabled: true,
-      channel: '#kanał-2',
+      channel: serverChannels[1]?.name || serverChannels[0]?.name || '',
       cooldownHours: 12,
       cooldownLabel: 'Co 12 godzin',
     },
@@ -124,11 +123,26 @@ export const AutoContentSystemView = ({ onBackToDashboard }: AutoContentSystemVi
       id: 3,
       name: 'Ramka 3',
       enabled: true,
-      channel: '#kanał-3',
+      channel: serverChannels[2]?.name || serverChannels[0]?.name || '',
       cooldownHours: 24,
       cooldownLabel: 'Co 24 godziny (1 dzień)',
     },
   ]);
+
+  useEffect(() => {
+    setSlots((prevSlots) =>
+      prevSlots.map((slot, idx) => {
+        if (serverChannels.length === 0) {
+          return { ...slot, channel: '' };
+        }
+        if (!serverChannels.some((c) => c.name === slot.channel)) {
+          const fallback = serverChannels[idx % serverChannels.length]?.name || serverChannels[0].name;
+          return { ...slot, channel: fallback };
+        }
+        return slot;
+      })
+    );
+  }, [server?.id, serverChannels.length]);
 
   // Formularz dodawania nowego kontentu
   const [newContentName, setNewContentName] = useState('');
@@ -311,11 +325,9 @@ export const AutoContentSystemView = ({ onBackToDashboard }: AutoContentSystemVi
                     <CustomSelect
                       value={slot.channel}
                       onChange={(val) => handleUpdateSlot(slot.id, { channel: val })}
-                      options={AVAILABLE_CHANNELS.map((ch) => ({
-                        value: ch,
-                        label: ch,
-                        prefix: '#',
-                      }))}
+                      options={channelOptions}
+                      placeholder={channelOptions.length === 0 ? "Brak kanałów na serwerze" : "Wybierz kanał"}
+                      disabled={channelOptions.length === 0}
                       size="md"
                     />
                   </div>

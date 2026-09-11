@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   ArrowLeft,
   UserPlus,
@@ -26,26 +26,12 @@ import { CustomSwitch } from './CustomSwitch';
 import { DiscordPreview } from './DiscordPreview';
 import { MessageStyleEditor } from './MessageStyleEditor';
 import { EmbedConfig, MessageFormatMode, DiscordField, MessageContainer } from '../types/embed';
+import { DiscordServer } from '../types';
 
 interface WelcomeSystemViewProps {
   onBackToDashboard: () => void;
+  server?: DiscordServer;
 }
-
-const CHANNEL_OPTIONS: SelectOption[] = [
-  { value: '#powitania', label: '#powitania', prefix: '#' },
-  { value: '#witamy', label: '#witamy', prefix: '#' },
-  { value: '#general', label: '#general', prefix: '#' },
-  { value: '#chat-ogólny', label: '#chat-ogólny', prefix: '#' },
-  { value: '#pożegnania', label: '#pożegnania', prefix: '#' },
-  { value: '#leave-logs', label: '#leave-logs', prefix: '#' },
-];
-
-const ROLE_OPTIONS: SelectOption[] = [
-  { value: '@Użytkownik', label: '@Użytkownik', prefix: '@' },
-  { value: '@Członek', label: '@Członek', prefix: '@' },
-  { value: '@Nowy', label: '@Nowy', prefix: '@' },
-  { value: 'Brak', label: 'Brak (Wyłączone)' },
-];
 
 const COLOR_PRESETS = [
   { label: 'Kitek Zielony', value: '#10b981' },
@@ -56,28 +42,74 @@ const COLOR_PRESETS = [
   { label: 'Ciemny', value: '#2b2d31' },
 ];
 
-export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps) => {
+export const WelcomeSystemView = ({ onBackToDashboard, server }: WelcomeSystemViewProps) => {
   const [activeTab, setActiveTab] = useState<'welcome' | 'goodbye' | 'autoping'>('welcome');
   const [notification, setNotification] = useState<string | null>(null);
 
-  // Stan Auto Ping (Ghost Ping na wybranych kanałach)
+  // Kanały i role serwera: jeśli brak kanałów/ról na serwerze, lista jest pusta i nic nie jest wyświetlane
+  const serverChannels = server?.channels ?? [];
+  const serverRoles = server?.roles ?? [];
+
+  const channelOptions: SelectOption[] = serverChannels.map((ch) => ({
+    value: ch.name,
+    label: ch.name,
+    prefix: '#',
+  }));
+
+  const roleOptions: SelectOption[] = serverRoles.length > 0
+    ? [
+        { value: 'Brak', label: 'Brak (Wyłączone)' },
+        ...serverRoles.map((r) => ({
+          value: r.name,
+          label: r.name,
+          prefix: '@',
+        })),
+      ]
+    : [];
+
+  // Stan Powitań
+  const [welcomeEnabled, setWelcomeEnabled] = useState(true);
+  const [welcomeChannel, setWelcomeChannel] = useState<string>(
+    serverChannels[0]?.name || ''
+  );
+  const [autoRole, setAutoRole] = useState<string>(
+    serverRoles[0]?.name || 'Brak'
+  );
+  const [sendWelcomeDM, setSendWelcomeDM] = useState(false);
+
+  // Stan Auto Ping (Ghost Ping na wybranych kanałach serwera)
   const [autoPingEnabled, setAutoPingEnabled] = useState<boolean>(true);
-  const [autoPingChannels, setAutoPingChannels] = useState<string[]>([
-    '#regulamin',
-    '#wybór-ról',
-    '#ogłoszenia',
-    '#weryfikacja',
-  ]);
+  const [autoPingChannels, setAutoPingChannels] = useState<string[]>(() => {
+    return serverChannels.slice(0, 3).map((ch) => ch.name);
+  });
   const [autoPingDeleteDelay, setAutoPingDeleteDelay] = useState<number>(0); // 0 = natychmiast
   const [autoPingMessage, setAutoPingMessage] = useState<string>(
     '{user} 👋 Witaj na serwerze! Zapoznaj się z tym kanałem.'
   );
 
-  // Stan Powitań
-  const [welcomeEnabled, setWelcomeEnabled] = useState(true);
-  const [welcomeChannel, setWelcomeChannel] = useState('#powitania');
-  const [autoRole, setAutoRole] = useState('@Użytkownik');
-  const [sendWelcomeDM, setSendWelcomeDM] = useState(false);
+  // Aktualizacja domyślnych wartości przy zmianie serwera
+  useEffect(() => {
+    if (serverChannels.length > 0) {
+      if (!serverChannels.some((c) => c.name === welcomeChannel)) {
+        setWelcomeChannel(serverChannels[0].name);
+      }
+      setAutoPingChannels((prev) => {
+        const filtered = prev.filter((p) => serverChannels.some((c) => c.name === p));
+        return filtered.length > 0 ? filtered : serverChannels.slice(0, 3).map((c) => c.name);
+      });
+    } else {
+      setWelcomeChannel('');
+      setAutoPingChannels([]);
+    }
+
+    if (serverRoles.length > 0) {
+      if (!serverRoles.some((r) => r.name === autoRole) && autoRole !== 'Brak') {
+        setAutoRole(serverRoles[0].name);
+      }
+    } else {
+      setAutoRole('');
+    }
+  }, [server?.id, serverChannels.length, serverRoles.length]);
 
   // Konfiguracja wiadomości powitalnej (Embed Config)
   const [welcomeConfig, setWelcomeConfig] = useState<EmbedConfig>({
@@ -145,7 +177,9 @@ export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps)
 
   // Stan Pożegnań
   const [goodbyeEnabled, setGoodbyeEnabled] = useState(true);
-  const [goodbyeChannel, setGoodbyeChannel] = useState('#pożegnania');
+  const [goodbyeChannel, setGoodbyeChannel] = useState<string>(
+    serverChannels[1]?.name || serverChannels[0]?.name || ''
+  );
   const [sendGoodbyeDM, setSendGoodbyeDM] = useState(false);
 
   // Konfiguracja wiadomości pożegnalnej
@@ -355,8 +389,10 @@ export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps)
                 <CustomSelect
                   value={welcomeChannel}
                   onChange={setWelcomeChannel}
-                  options={CHANNEL_OPTIONS}
+                  options={channelOptions}
                   icon={Hash}
+                  placeholder={channelOptions.length === 0 ? "Brak kanałów na serwerze" : "Wybierz kanał powitań"}
+                  disabled={channelOptions.length === 0}
                   ariaLabel="Wybierz kanał powitań"
                 />
               </div>
@@ -370,8 +406,10 @@ export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps)
                 <CustomSelect
                   value={autoRole}
                   onChange={setAutoRole}
-                  options={ROLE_OPTIONS}
+                  options={roleOptions}
                   icon={Shield}
+                  placeholder={roleOptions.length === 0 ? "Brak ról na serwerze" : "Wybierz automatyczną rolę"}
+                  disabled={roleOptions.length === 0}
                   ariaLabel="Wybierz automatyczną rolę"
                 />
               </div>
@@ -768,8 +806,10 @@ export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps)
               <CustomSelect
                 value={goodbyeChannel}
                 onChange={setGoodbyeChannel}
-                options={CHANNEL_OPTIONS}
+                options={channelOptions}
                 icon={Hash}
+                placeholder={channelOptions.length === 0 ? "Brak kanałów na serwerze" : "Wybierz kanał pożegnań"}
+                disabled={channelOptions.length === 0}
                 ariaLabel="Wybierz kanał pożegnań"
               />
             </div>
@@ -1035,40 +1075,44 @@ export const WelcomeSystemView = ({ onBackToDashboard }: WelcomeSystemViewProps)
                 </div>
               </div>
 
-              {/* Szybkie dodawanie popularnych kanałów */}
+              {/* Szybkie dodawanie kanałów z serwera */}
               {autoPingChannels.length < 5 && (
                 <div className="pt-2 border-t border-[#2b2f37] space-y-2">
                   <span className="text-[11px] text-zinc-400 font-semibold">
-                    Kliknij, aby szybko dodać kanał:
+                    Kliknij, aby dodać kanał z serwera:
                   </span>
-                  <div className="flex flex-wrap gap-2">
-                    {[
-                      '#regulamin',
-                      '#wybór-ról',
-                      '#ogłoszenia',
-                      '#weryfikacja',
-                      '#informacje',
-                      '#faq',
-                      '#czat-ogólny',
-                    ]
-                      .filter((ch) => !autoPingChannels.includes(ch))
-                      .map((ch) => (
-                        <button
-                          key={ch}
-                          type="button"
-                          onClick={() => {
-                            if (autoPingChannels.length < 5) {
-                              setAutoPingChannels([...autoPingChannels, ch]);
-                              showToast(`Dodano kanał ${ch}!`);
-                            }
-                          }}
-                          className="px-2.5 py-1 rounded bg-[#16181b] hover:bg-[#252930] text-zinc-300 hover:text-emerald-400 border border-[#2f353e] text-xs flex items-center gap-1 transition-colors"
-                        >
-                          <Plus className="w-3 h-3 text-emerald-400" />
-                          <span>{ch}</span>
-                        </button>
-                      ))}
-                  </div>
+                  {serverChannels.length === 0 ? (
+                    <p className="text-xs text-zinc-500 italic">
+                      Brak kanałów na tym serwerze. Dodaj kanały w Discordzie, aby móc je tutaj wybrać.
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {serverChannels
+                        .map((ch) => ch.name)
+                        .filter((ch) => !autoPingChannels.includes(ch))
+                        .map((ch) => (
+                          <button
+                            key={ch}
+                            type="button"
+                            onClick={() => {
+                              if (autoPingChannels.length < 5) {
+                                setAutoPingChannels([...autoPingChannels, ch]);
+                                showToast(`Dodano kanał ${ch}!`);
+                              }
+                            }}
+                            className="px-2.5 py-1 rounded bg-[#16181b] hover:bg-[#252930] text-zinc-300 hover:text-emerald-400 border border-[#2f353e] text-xs flex items-center gap-1 transition-colors"
+                          >
+                            <Plus className="w-3 h-3 text-emerald-400" />
+                            <span>{ch}</span>
+                          </button>
+                        ))}
+                      {serverChannels.filter((c) => !autoPingChannels.includes(c.name)).length === 0 && (
+                        <p className="text-xs text-zinc-500 italic">
+                          Wszystkie kanały serwera zostały już dodane do listy.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
