@@ -1,0 +1,6 @@
+{
+  "name": "Kitek - Discord Bot Dashboard",
+  "description": "Panel zarządzania botem Discord Kitek z autoryzacją OAuth2, kategorią BOTS z gotowym botem Node.js czytającym zdarzenia dołączenia (guildCreate) oraz konfiguracją wdrożenia na Vercel.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

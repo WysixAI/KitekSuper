@@ -1,0 +1,61 @@
+{
+  "guildId": "default",
+  "guildName": "Szablon Domyślny Serwera",
+  "prefix": "!",
+  "joinedAt": "2025-01-01T00:00:00.000Z",
+  "modules": {
+    "welcomeSystem": true,
+    "autoContent": true,
+    "moderation": true,
+    "logging": true,
+    "economy": true
+  },
+  "welcomeSystem": {
+    "enabled": true,
+    "channelId": null,
+    "channelName": "👋-powitania",
+    "sendDm": false,
+    "message": "Witaj {user} na serwerze {server}! Cieszymy się, że do nas dołączyłeś! Jesteś naszym {memberCount}. członkiem.",
+    "embed": {
+      "title": "🎉 Nowy członek na serwerze!",
+      "color": "#10b981",
+      "description": "Życzymy miłego pobytu i zapraszamy na kanał z regulaminem!",
+      "showAvatar": true,
+      "footer": "Kitek Bot System"
+    },
+    "autoRole": null
+  },
+  "autoContent": {
+    "enabled": true,
+    "channelId": null,
+    "channelName": "🐱-kocurek-dnia",
+    "postIntervalHours": 12,
+    "categories": ["koty", "ciekawostki", "memy", "motywacja"],
+    "lastPostAt": null
+  },
+  "moderation": {
+    "enabled": true,
+    "antiLinks": true,
+    "antiSpam": true,
+    "maxMentions": 5,
+    "logChannelId": null,
+    "mutedRole": "Wyciszony"
+  },
+  "logging": {
+    "enabled": true,
+    "channelId": null,
+    "events": {
+      "messageDelete": true,
+      "messageUpdate": true,
+      "memberJoin": true,
+      "memberLeave": true,
+      "roleChange": false
+    }
+  },
+  "economy": {
+    "enabled": true,
+    "currencyName": "KitekCoins",
+    "currencySymbol": "🪙",
+    "dailyAmount": 100
+  }
+}
