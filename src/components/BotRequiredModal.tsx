@@ -83,18 +83,18 @@ export const BotRequiredModal = ({
           transition={{ duration: 0.2 }}
           className="w-full max-w-lg bg-[#1a1d21] border border-red-500/40 rounded-2xl shadow-2xl overflow-hidden text-white flex flex-col"
         >
-          {/* Czerwony pasek ostrzegawczy na górze */}
-          <div className="bg-red-500/15 border-b border-red-500/30 px-5 py-3.5 flex items-center justify-between">
+          {/* Pasek nagłówka */}
+          <div className="bg-emerald-500/10 border-b border-emerald-500/20 px-5 py-3.5 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400">
-                <AlertTriangle className="w-4 h-4 text-red-400" />
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+                <Bot className="w-4 h-4 text-emerald-400" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-red-400">
-                  Wymagane Dodanie Bota na Serwer!
+                <h3 className="text-sm font-bold text-white">
+                  Zaproś bota na ten serwer
                 </h3>
-                <span className="text-[10px] font-mono text-zinc-400">
-                  [BŁĄD: BOT_NOT_ON_SERVER]
+                <span className="text-[10px] text-zinc-400">
+                  Wymagane jednorazowe dodanie bota
                 </span>
               </div>
             </div>
@@ -107,12 +107,12 @@ export const BotRequiredModal = ({
             </button>
           </div>
 
-          {/* Treść okna błędu */}
+          {/* Treść okna */}
           <div className="p-5 space-y-4">
             <p className="text-xs text-zinc-300 leading-relaxed">
-              Nie możesz zarządzać modułami tego serwera ani odczytać jego konfiguracji, ponieważ bot{' '}
-              <strong className="text-white">Kitek</strong> nie został jeszcze dodany na serwer{' '}
-              <strong className="text-white font-mono">{server.name}</strong>!
+              Aby w pełni zarządzać modułami i komendami tego serwera, dodaj bota{' '}
+              <strong className="text-emerald-400">Kitek</strong> na serwer{' '}
+              <strong className="text-white">{server.name}</strong>.
             </p>
 
             {/* Karta serwera z informacją o braku bota */}
@@ -127,37 +127,31 @@ export const BotRequiredModal = ({
                 </div>
                 <div>
                   <div className="font-bold text-xs text-white">{server.name}</div>
-                  <div className="text-[11px] font-mono text-zinc-500">ID: {server.id}</div>
+                  <div className="text-[11px] text-zinc-500">{server.memberCount} członków</div>
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-red-500/10 text-red-400 border border-red-500/20 text-[11px] font-mono font-bold">
-                <span className="w-2 h-2 rounded-full bg-red-400 animate-ping" />
-                <span>Brak bota</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-300 border border-amber-500/20 text-[11px] font-mono font-semibold">
+                <span className="w-2 h-2 rounded-full bg-amber-400" />
+                <span>Oczekuje na bota</span>
               </div>
             </div>
 
-            {/* Wyjaśnienie techniczne co się stanie po dodaniu */}
+            {/* Wyjaśnienie co się stanie po dodaniu */}
             <div className="p-3 rounded-xl bg-[#20242a] border border-[#2e343e] space-y-1.5 text-xs text-zinc-400">
               <div className="flex items-center gap-1.5 text-zinc-300 font-bold text-[11px]">
-                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Jak działa aktywacja serwera?</span>
+                <Bot className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Jak działa aktywacja bota?</span>
               </div>
               <p className="text-[11px] leading-relaxed">
-                Gdy dodasz bota na serwer przez link OAuth2, zdarzenie{' '}
-                <code className="text-emerald-400 bg-[#141619] px-1 py-0.5 rounded font-mono">guildCreate</code>{' '}
-                automatycznie utworzy plik konfiguracyjny{' '}
-                <code className="text-amber-400 bg-[#141619] px-1 py-0.5 rounded font-mono">
-                  servers/{server.id}.json
-                </code>{' '}
-                i odblokuje dostęp do modułów bota w panelu.
+                Po autoryzacji bota przez oficjalny link Discord bot natychmiastowo połączy się z serwerem i włączy wszystkie wybrane moduły oraz powitania.
               </p>
             </div>
 
             {simulatedSuccess && (
               <div className="p-3 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 text-xs font-semibold flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>Zasymulowano guildCreate! Plik servers/{server.id}.json został utworzony. Przełączanie...</span>
+                <span>Bot został pomyślnie dodany na serwer! Przełączanie...</span>
               </div>
             )}
           </div>

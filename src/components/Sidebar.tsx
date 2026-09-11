@@ -136,11 +136,8 @@ export const Sidebar = ({
 
         {/* Kategoria BOTS */}
         <div className="space-y-1">
-          <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-zinc-500 uppercase tracking-wider font-mono flex items-center justify-between">
-            <span>BOTS</span>
-            <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-semibold">
-              NODE.JS
-            </span>
+          <div className="px-3 pt-2 pb-1 text-[11px] font-bold text-zinc-500 uppercase tracking-wider font-mono">
+            BOT DISCORD
           </div>
 
           <button
@@ -154,7 +151,7 @@ export const Sidebar = ({
           >
             <div className="flex items-center gap-2.5">
               <Bot className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span className="text-xs font-semibold">Bot Discord & Vercel</span>
+              <span className="text-xs font-semibold">Pliki & Status Bota</span>
             </div>
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
           </button>

@@ -64,10 +64,6 @@ export const DashboardView = ({
   const currentServer = servers.find((s) => s.id === (selectedServerId || servers[0]?.id)) || servers[0];
 
   const requireBotOrRun = (action?: () => void) => {
-    if (currentServer && currentServer.botJoined === false) {
-      setShowBotRequired(true);
-      return;
-    }
     if (action) action();
   };
 
@@ -111,19 +107,19 @@ export const DashboardView = ({
         {/* Header */}
         <div className="border-b border-[#2b2f35] pb-5">
           <div>
-            <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider font-mono mb-1">
-              DASHBOARD • MAIN
+            <div className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider font-mono mb-1">
+              PANEL GŁÓWNY
             </div>
             <h1 className="text-2xl font-bold text-white tracking-tight">
               Zarządzanie botem i serwerem
             </h1>
             <p className="text-xs text-zinc-400 mt-1">
-              Przejdź do konfiguracji modułów i systemów bota.
+              Konfiguracja modułów, systemów i automatyzacji na Twoim serwerze Discord.
             </p>
           </div>
         </div>
 
-        {/* Banner Aktywnego Serwera z możliwością zmiany i Invite Bot */}
+        {/* Banner Aktywnego Serwera z możliwością zmiany i Zaproś Bota */}
         <div className="p-4 rounded-xl bg-gradient-to-r from-[#17231c] via-[#151c22] to-[#181d24] border border-emerald-500/30 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
           <div className="flex items-center gap-3.5">
             <div className="w-11 h-11 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-xl shrink-0 overflow-hidden shadow-inner">
@@ -136,12 +132,13 @@ export const DashboardView = ({
             <div>
               <div className="flex items-center gap-2">
                 <span className="font-bold text-sm text-white">{currentServer?.name || 'Wybierz serwer'}</span>
-                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
-                  AKTYWNY SERWER
+                <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  {currentServer?.botStatus === 'online' ? 'POŁĄCZONY' : 'SERWER'}
                 </span>
               </div>
               <div className="text-xs text-zinc-400 mt-0.5 flex items-center gap-3 font-mono">
-                <span>{currentServer?.memberCount.toLocaleString() || 0} członków</span>
+                <span>{currentServer?.memberCount?.toLocaleString() || 0} członków</span>
                 <span>•</span>
                 <span>Prefix: <strong className="text-emerald-400">{currentServer?.prefix || '!'}</strong></span>
                 <span>•</span>
@@ -158,53 +155,49 @@ export const DashboardView = ({
                 className="px-3.5 py-2 rounded-xl bg-[#20252c] hover:bg-[#282f38] text-zinc-200 text-xs font-semibold border border-[#2f3542] flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Server className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Przełącz serwer ({servers.length})</span>
+                <span>Zmień serwer ({servers.length})</span>
               </button>
             )}
             <button
               type="button"
               onClick={() => {
-                if (currentServer?.botJoined === false) {
-                  setShowBotRequired(true);
-                } else {
-                  window.open(getBotInviteUrl(currentServer?.id), '_blank');
-                }
+                window.open(getBotInviteUrl(currentServer?.id), '_blank');
               }}
               className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-bold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
             >
               <ExternalLink className="w-3.5 h-3.5" />
-              <span>Invite Bot</span>
+              <span>Dodaj bota na Discord</span>
             </button>
           </div>
         </div>
 
-        {/* Banner Ostrzegawczy gdy bot nie jest dodany na ten serwer */}
+        {/* Banner Informacyjny gdy bot nie jest dodany na ten serwer */}
         {currentServer && currentServer.botJoined === false && (
-          <div className="p-4 rounded-xl bg-gradient-to-r from-red-950/70 via-[#231518] to-[#1a1416] border border-red-500/60 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl">
+          <div className="p-4 rounded-xl bg-gradient-to-r from-[#201c15] via-[#1a1815] to-[#151719] border border-amber-500/40 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-md">
             <div className="flex items-start sm:items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0">
-                <AlertTriangle className="w-5 h-5 text-red-400" />
+              <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                <Bot className="w-5 h-5 text-amber-400" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="font-bold text-sm text-red-400">BŁĄD: Bot nie został dodany na ten serwer!</span>
-                  <span className="px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/30 text-[10px] font-mono font-bold">
-                    WYMAGANA AKCJA
+                  <span className="font-bold text-sm text-zinc-100">Bot nie jest jeszcze na tym serwerze</span>
+                  <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold">
+                    OPCJONALNIE
                   </span>
                 </div>
                 <p className="text-xs text-zinc-300 mt-1 leading-relaxed">
-                  Aby móc konfigurować moduły oraz wygenerować plik <code className="text-amber-400 font-mono">servers/{currentServer.id}.json</code> dla serwera <strong className="text-white font-mono">{currentServer.name}</strong>, musisz najpierw dodać bota Kitek na serwer.
+                  Zaproś bota Kitek na serwer <strong className="text-white font-medium">{currentServer.name}</strong>, aby aktywować powitania, moderację i komendy slash.
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button
                 type="button"
-                onClick={() => setShowBotRequired(true)}
-                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-400 hover:to-rose-500 text-white font-bold text-xs shadow-lg shadow-red-500/20 flex items-center gap-2 cursor-pointer transition-all"
+                onClick={() => window.open(getBotInviteUrl(currentServer?.id), '_blank')}
+                className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-emerald-500 hover:from-amber-400 hover:to-emerald-400 text-black font-bold text-xs shadow-md flex items-center gap-2 cursor-pointer transition-all"
               >
                 <Bot className="w-4 h-4" />
-                <span>Dodaj Bota na Serwer</span>
+                <span>Zaproś bota</span>
               </button>
             </div>
           </div>
@@ -213,7 +206,7 @@ export const DashboardView = ({
         {/* Sekcja Moduły */}
         <div className="space-y-3">
           <div className="text-[11px] font-bold text-zinc-500 uppercase tracking-wider font-mono">
-            MODULES (FUNKCJE BOTA)
+            MODUŁY BOTA
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-4">

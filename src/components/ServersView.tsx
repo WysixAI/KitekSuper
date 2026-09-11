@@ -70,11 +70,6 @@ export const ServersView = ({
 
   const handleSwitchServer = (id: string) => {
     const target = allowedServers.find((s) => s.id === id);
-    if (target && target.botJoined === false) {
-      // Bot nie jest jeszcze dodany na serwer -> wyświetl modal błędu z instrukcją i opcją dodania!
-      setRequiredBotServer(target);
-      return;
-    }
     onSelectServer(id);
     if (target) {
       showToast(`Przełączono aktywny serwer na: ${target.name}`);
@@ -602,7 +597,7 @@ export const ServersView = ({
         onBotAddedSuccessfully={(srvId) => {
           if (onMarkBotJoined) onMarkBotJoined(srvId);
           onSelectServer(srvId);
-          showToast(`Bot został pomyślnie dodany! Utworzono plik servers/${srvId}.json`);
+          showToast(`Bot został pomyślnie dodany do serwera!`);
         }}
       />
     </div>
