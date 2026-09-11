@@ -83,9 +83,22 @@ export default function App() {
 
   const handleMarkBotJoined = (srvId: string) => {
     setServers((prev) =>
-      prev.map((s) =>
-        s.id === srvId ? { ...s, botJoined: true, botStatus: 'online' } : s
-      )
+      prev.map((s) => {
+        if (s.id === srvId) {
+          const channels = s.channels && s.channels.length > 0 ? s.channels : [
+            { id: 'c1', name: 'powitania', type: 'text' },
+            { id: 'c2', name: 'ogólny', type: 'text' },
+            { id: 'c3', name: 'ogłoszenia', type: 'text' }
+          ];
+          const roles = s.roles && s.roles.length > 0 ? s.roles : [
+            { id: 'r1', name: 'Użytkownik', color: '#99aab5' },
+            { id: 'r2', name: 'VIP', color: '#f1c40f' },
+            { id: 'r3', name: 'Moderator', color: '#e74c3c' }
+          ];
+          return { ...s, botJoined: true, botStatus: 'online', channels, roles };
+        }
+        return s;
+      })
     );
   };
 
