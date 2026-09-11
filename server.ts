@@ -491,39 +491,44 @@ app.post('/api/auth/discord/token', async (req, res) => {
       const errorData = await tokenResponse.text();
       console.error('Discord Token Exchange Error on redirectUri:', redirectUri, errorData);
 
-      // Automatyczny fallback http/https
-      let altRedirectUri: string | null = null;
+      // Automatyczny fallback na alternatywne redirectUri (w tym kitekbots.vercel.app i http/https)
+      const candidateUris: string[] = [];
       if (redirectUri.startsWith('http://')) {
-        altRedirectUri = redirectUri.replace('http://', 'https://');
+        candidateUris.push(redirectUri.replace('http://', 'https://'));
       } else if (redirectUri.startsWith('https://')) {
-        altRedirectUri = redirectUri.replace('https://', 'http://');
+        candidateUris.push(redirectUri.replace('https://', 'http://'));
+      }
+      candidateUris.push('https://kitekbots.vercel.app/auth/callback');
+      candidateUris.push('https://kitekbots.vercel.app/api/auth/discord/callback');
+
+      let retrySucceeded = false;
+      if (errorData.includes('redirect_uri')) {
+        for (const candidate of candidateUris) {
+          if (candidate === redirectUri) continue;
+          console.log('Retrying exchange with alternative redirectUri:', candidate);
+          const altParams = new URLSearchParams({
+            client_id: DISCORD_CLIENT_ID,
+            client_secret: DISCORD_CLIENT_SECRET,
+            grant_type: 'authorization_code',
+            code,
+            redirect_uri: candidate,
+          });
+          const retryRes = await fetch(`${DISCORD_API_ENDPOINT}/oauth2/token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: altParams.toString(),
+          });
+          if (retryRes.ok) {
+            tokenResponse = retryRes;
+            retrySucceeded = true;
+            break;
+          }
+        }
       }
 
-      if (altRedirectUri && errorData.includes('redirect_uri')) {
-        console.log('Retrying exchange with alternative redirectUri:', altRedirectUri);
-        const altParams = new URLSearchParams({
-          client_id: DISCORD_CLIENT_ID,
-          client_secret: DISCORD_CLIENT_SECRET,
-          grant_type: 'authorization_code',
-          code,
-          redirect_uri: altRedirectUri,
-        });
-        const retryRes = await fetch(`${DISCORD_API_ENDPOINT}/oauth2/token`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-          },
-          body: altParams.toString(),
-        });
-        if (retryRes.ok) {
-          tokenResponse = retryRes;
-        } else {
-          return res.status(tokenResponse.status).json({
-            error: 'Nie udało się wymienić kodu autoryzacyjnego na token Discord.',
-            details: errorData,
-          });
-        }
-      } else {
+      if (!tokenResponse.ok && !retrySucceeded) {
         return res.status(tokenResponse.status).json({
           error: 'Nie udało się wymienić kodu autoryzacyjnego na token Discord.',
           details: errorData,

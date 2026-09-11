@@ -398,8 +398,8 @@ DISCORD_BOT_TOKEN=twoj_tajny_token_bota
 # Application ID z Discord Developer Portal
 DISCORD_CLIENT_ID=1368350667634376785
 
-# Adres URL Twojego Dashboardu Kitek (na Vercel lub Cloud Run)
-DASHBOARD_URL=https://twoj-dashboard.vercel.app
+# Adres URL Twojego Dashboardu Kitek na Vercel
+DASHBOARD_URL=https://kitekbots.vercel.app
 `,
   },
   {
@@ -1257,7 +1257,7 @@ export const BotsView = ({
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
               {/* Vercel - Dashboard */}
-              <div className="p-4 rounded-xl bg-[#16181b] border border-[#2b3038] space-y-2">
+              <div className="p-4 rounded-xl bg-[#16181b] border border-[#2b3038] space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Globe className="w-4 h-4 text-emerald-400" />
@@ -1268,24 +1268,34 @@ export const BotsView = ({
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Panel WWW, autoryzacja Discord OAuth2 oraz baza konfiguracji serwerów działają bezserwerowo na Vercel pod Twoją domeną. Wystarczy podpiąć repozytorium GitHub.
+                  Twój panel działa pod adresem: <a href="https://kitekbots.vercel.app/" target="_blank" rel="noreferrer" className="text-emerald-400 font-mono underline">https://kitekbots.vercel.app/</a>.
                 </p>
+                <div className="p-2.5 rounded-lg bg-[#101214] border border-[#23272e] space-y-1.5 text-[11px]">
+                  <span className="text-zinc-400 block font-semibold">Wpisz w Discord Developer Portal ➔ OAuth2 ➔ Redirects:</span>
+                  <code className="text-emerald-300 font-mono block select-all bg-[#1a1d21] p-1.5 rounded">https://kitekbots.vercel.app/auth/callback</code>
+                </div>
               </div>
 
               {/* Railway / VPS - Bot Gateway 24/7 */}
-              <div className="p-4 rounded-xl bg-[#16181b] border border-[#2b3038] space-y-2">
+              <div className="p-4 rounded-xl bg-[#16181b] border border-[#2b3038] space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold text-white flex items-center gap-1.5">
                     <Cpu className="w-4 h-4 text-blue-400" />
-                    <span>Proces Bota 24/7 (Railway / VPS)</span>
+                    <span>Proces Bota 24/7 & Konfiguracja servers/[id].json</span>
                   </span>
                   <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 font-mono font-semibold">
                     WEBSOCKET
                   </span>
                 </div>
                 <p className="text-xs text-zinc-400 leading-relaxed">
-                  Pobraną paczkę ZIP wrzuć na Railway, Render lub VPS z PM2. W pliku <code className="text-emerald-400 font-mono">.env</code> wpisz adres URL Twojego wdrożenia na Vercel.
+                  W pliku <code className="text-emerald-400 font-mono">.env</code> bota ustaw: <code className="text-emerald-300 font-mono">DASHBOARD_URL=https://kitekbots.vercel.app</code>.
                 </p>
+                <div className="p-2.5 rounded-lg bg-[#101214] border border-[#23272e] space-y-1 text-[11px]">
+                  <span className="text-zinc-400 block font-semibold">Nazewnictwo plików w folderze <code className="text-zinc-300">servers/</code>:</span>
+                  <span className="text-zinc-300 block">
+                    Każdy serwer posiada plik <strong className="text-white font-mono">&lt;ID_SERWERA&gt;.json</strong> (np. <code className="text-emerald-300 font-mono">1368350667634376785.json</code>). Bot nigdy nie używa fikcyjnych nazw typu <code className="text-red-400 line-through font-mono">srv-1.json</code>.
+                  </span>
+                </div>
               </div>
             </div>
           </div>

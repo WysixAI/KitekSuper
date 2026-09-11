@@ -2,7 +2,7 @@ import { DiscordServer, BotIdea } from '../types';
 
 export const INITIAL_SERVERS: DiscordServer[] = [
   {
-    id: 'srv-1',
+    id: '1368350667634376785',
     name: 'Społeczność Kitek',
     icon: '🐱',
     acronym: 'SK',
@@ -19,7 +19,7 @@ export const INITIAL_SERVERS: DiscordServer[] = [
     active: true,
   },
   {
-    id: 'srv-2',
+    id: '124982019385923841',
     name: 'Gaming Zone Polska',
     icon: '🎮',
     acronym: 'GZ',
@@ -36,7 +36,7 @@ export const INITIAL_SERVERS: DiscordServer[] = [
     active: false,
   },
   {
-    id: 'srv-3',
+    id: '118492049284920485',
     name: 'Dev & Skrypty Studio',
     icon: '💻',
     acronym: 'DS',
@@ -53,7 +53,7 @@ export const INITIAL_SERVERS: DiscordServer[] = [
     active: false,
   },
   {
-    id: 'srv-5',
+    id: '115829402948294819',
     name: 'E-Sport Arena & Turnieje',
     icon: '🏆',
     acronym: 'EA',

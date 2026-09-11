@@ -42,11 +42,14 @@ export default function App() {
     };
   });
 
-  // Stan serwerów Discord (początkowo z sesji lub domyślna baza)
+  // Stan serwerów Discord (początkowo z sesji lub domyślna baza z realnymi ID Discord)
   const [servers, setServers] = useState<DiscordServer[]>(() => {
     const session = loadDiscordSession();
     if (session?.guilds && session.guilds.length > 0) {
-      return convertDiscordGuildsToServers(session.guilds);
+      const validGuilds = session.guilds.filter((g) => !g.id.startsWith('srv-'));
+      if (validGuilds.length > 0) {
+        return convertDiscordGuildsToServers(validGuilds);
+      }
     }
     return INITIAL_SERVERS;
   });
@@ -54,7 +57,8 @@ export default function App() {
   const [selectedServerId, setSelectedServerId] = useState<string>(() => {
     const session = loadDiscordSession();
     if (session?.guilds && session.guilds.length > 0) {
-      return session.guilds[0].id;
+      const valid = session.guilds.find((g) => !g.id.startsWith('srv-'));
+      if (valid) return valid.id;
     }
     return INITIAL_SERVERS[0].id;
   });
@@ -85,50 +89,86 @@ export default function App() {
     );
   };
 
-  useEffect(() => {
-    const handleLocationRouting = () => {
-      const hash = window.location.hash.replace('#', '');
-      const pathname = window.location.pathname;
+  const pathToViewMap: Record<string, { activePath: '/dashboard' | '/login'; sidebarItem: string }> = {
+    '/dashboard': { activePath: '/dashboard', sidebarItem: 'Dashboard' },
+    '/': { activePath: '/dashboard', sidebarItem: 'Dashboard' },
+    '/servers': { activePath: '/dashboard', sidebarItem: 'Servers' },
+    '/bots': { activePath: '/dashboard', sidebarItem: 'Bots' },
+    '/ideas': { activePath: '/dashboard', sidebarItem: 'Pomysły' },
+    '/pomysly': { activePath: '/dashboard', sidebarItem: 'Pomysły' },
+    '/welcome': { activePath: '/dashboard', sidebarItem: 'Welcome System' },
+    '/logging': { activePath: '/dashboard', sidebarItem: 'Logging System' },
+    '/logs': { activePath: '/dashboard', sidebarItem: 'Logging System' },
+    '/embed': { activePath: '/dashboard', sidebarItem: 'Embed Creator' },
+    '/embed-creator': { activePath: '/dashboard', sidebarItem: 'Embed Creator' },
+    '/moderation': { activePath: '/dashboard', sidebarItem: 'Moderacja' },
+    '/automod': { activePath: '/dashboard', sidebarItem: 'Moderacja' },
+    '/economy': { activePath: '/dashboard', sidebarItem: 'Ekonomia System' },
+    '/ekonomia': { activePath: '/dashboard', sidebarItem: 'Ekonomia System' },
+    '/auto-content': { activePath: '/dashboard', sidebarItem: 'Auto-Kontent' },
+    '/autokontent': { activePath: '/dashboard', sidebarItem: 'Auto-Kontent' },
+    '/login': { activePath: '/login', sidebarItem: 'Dashboard' },
+  };
 
-      if (hash === 'servers' || pathname === '/servers') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Servers');
-      } else if (hash === 'ideas' || hash === 'pomysly' || pathname === '/ideas' || pathname === '/pomysly') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Pomysły');
-      } else if (hash === 'bots' || hash === 'bot' || pathname === '/bots') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Bots');
-      } else if (hash === 'welcome' || pathname === '/welcome') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Welcome System');
-      } else if (hash === 'logging' || hash === 'logs' || pathname === '/logging' || pathname === '/logs') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Logging System');
-      } else if (hash === 'embed' || hash === 'embed-creator' || pathname === '/embed' || pathname === '/embed-creator') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Embed Creator');
-      } else if (hash === 'moderation' || hash === 'automod' || pathname === '/moderation') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Moderacja');
-      } else if (hash === 'economy' || hash === 'ekonomia' || pathname === '/economy') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Ekonomia System');
-      } else if (hash === 'auto-content' || hash === 'autokontent' || hash === 'auto-kontent' || pathname === '/auto-content') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Auto-Kontent');
-      } else if (hash === 'login' || pathname === '/login') {
-        setActivePath('/login');
-      } else if (hash === 'dashboard' || pathname === '/dashboard') {
-        setActivePath('/dashboard');
-        setActiveSidebarItem('Dashboard');
+  const sidebarItemToPathMap: Record<string, string> = {
+    'Dashboard': '/dashboard',
+    'Servers': '/servers',
+    'Bots': '/bots',
+    'Pomysły': '/ideas',
+    'Welcome System': '/welcome',
+    'Logging System': '/logging',
+    'Embed Creator': '/embed',
+    'Moderacja': '/moderation',
+    'Ekonomia System': '/economy',
+    'Auto-Kontent': '/auto-content',
+  };
+
+  const handleLocationRouting = () => {
+    let currentPath = window.location.pathname;
+
+    // Automatyczne usuwanie znaku '#' i przekształcanie starych linków (np. #dashboard -> /dashboard)
+    if (window.location.hash) {
+      const hashContent = window.location.hash.replace(/^#\/?/, '');
+      if (hashContent) {
+        currentPath = '/' + hashContent;
       }
-    };
+      try {
+        window.history.replaceState(null, '', currentPath);
+      } catch {}
+    }
 
+    const cleanPath = currentPath.endsWith('/') && currentPath.length > 1 ? currentPath.slice(0, -1) : currentPath;
+    const match = pathToViewMap[cleanPath] || pathToViewMap[currentPath];
+
+    if (match) {
+      setActivePath(match.activePath);
+      setActiveSidebarItem(match.sidebarItem);
+    } else {
+      setActivePath('/dashboard');
+      setActiveSidebarItem('Dashboard');
+    }
+  };
+
+  const navigate = (path: string, replace = false) => {
+    try {
+      if (replace || window.location.pathname === path) {
+        window.history.replaceState(null, '', path);
+      } else {
+        window.history.pushState(null, '', path);
+      }
+    } catch {}
+    handleLocationRouting();
+  };
+
+  useEffect(() => {
+    window.addEventListener('popstate', handleLocationRouting);
     window.addEventListener('hashchange', handleLocationRouting);
     handleLocationRouting();
 
-    return () => window.removeEventListener('hashchange', handleLocationRouting);
+    return () => {
+      window.removeEventListener('popstate', handleLocationRouting);
+      window.removeEventListener('hashchange', handleLocationRouting);
+    };
   }, []);
 
   // Cross-window auth event listener (handles completion from Discord OAuth popup)
@@ -195,11 +235,7 @@ export default function App() {
   }, []);
 
   const handleNavigate = (path: '/dashboard' | '/login') => {
-    setActivePath(path);
-    if (path === '/dashboard') {
-      setActiveSidebarItem('Dashboard');
-    }
-    window.location.hash = path.replace('/', '');
+    navigate(path);
   };
 
   const handleLogout = () => {
@@ -210,8 +246,7 @@ export default function App() {
       role: 'Użytkownik',
       isAdmin: false,
     });
-    setActivePath('/login');
-    window.location.hash = 'login';
+    navigate('/login');
   };
 
   const handleLoginSuccess = (discordUser?: DiscordUser, discordGuilds?: DiscordServer[]) => {
@@ -240,9 +275,7 @@ export default function App() {
         }
       }
     }
-    setActivePath('/dashboard');
-    setActiveSidebarItem('Dashboard');
-    window.location.hash = 'dashboard';
+    navigate('/dashboard');
   };
 
   return (
@@ -266,28 +299,8 @@ export default function App() {
               <Sidebar
                 activeItem={activeSidebarItem}
                 onSelectItem={(item) => {
-                  setActiveSidebarItem(item);
-                  if (item === 'Servers') {
-                    window.location.hash = 'servers';
-                  } else if (item === 'Bots') {
-                    window.location.hash = 'bots';
-                  } else if (item === 'Pomysły') {
-                    window.location.hash = 'ideas';
-                  } else if (item === 'Welcome System') {
-                    window.location.hash = 'welcome';
-                  } else if (item === 'Logging System') {
-                    window.location.hash = 'logging';
-                  } else if (item === 'Embed Creator') {
-                    window.location.hash = 'embed';
-                  } else if (item === 'Moderacja') {
-                    window.location.hash = 'moderation';
-                  } else if (item === 'Ekonomia System') {
-                    window.location.hash = 'economy';
-                  } else if (item === 'Auto-Kontent') {
-                    window.location.hash = 'auto-content';
-                  } else if (item === 'Dashboard') {
-                    window.location.hash = 'dashboard';
-                  }
+                  const targetPath = sidebarItemToPathMap[item] || '/dashboard';
+                  navigate(targetPath);
                 }}
                 activeSubdomain={activeSubdomain}
                 onChangeSubdomain={setActiveSubdomain}
@@ -295,8 +308,7 @@ export default function App() {
                 selectedServerId={selectedServerId}
                 onSelectServer={handleSelectServer}
                 onOpenInviteModal={() => {
-                  setActiveSidebarItem('Servers');
-                  window.location.hash = 'servers';
+                  navigate('/servers');
                 }}
               />
             </div>
@@ -309,8 +321,7 @@ export default function App() {
                   selectedServerId={selectedServerId}
                   onSelectServer={handleSelectServer}
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                   onMarkBotJoined={handleMarkBotJoined}
                 />
@@ -320,8 +331,7 @@ export default function App() {
                   selectedServerId={selectedServerId}
                   onSelectServer={handleSelectServer}
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                   onRefreshServers={() => {
                     fetch('/api/bot/status')
@@ -343,54 +353,46 @@ export default function App() {
               ) : activeSidebarItem === 'Pomysły' ? (
                 <IdeasView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                   onNavigateToServers={() => {
-                    setActiveSidebarItem('Servers');
-                    window.location.hash = 'servers';
+                    navigate('/servers');
                   }}
                 />
               ) : activeSidebarItem === 'Welcome System' ? (
                 <WelcomeSystemView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Logging System' ? (
                 <LoggingSystemView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Embed Creator' ? (
                 <EmbedCreatorView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Moderacja' ? (
                 <ModerationSystemView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Ekonomia System' ? (
                 <EconomySystemView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Auto-Kontent' ? (
                 <AutoContentSystemView
                   onBackToDashboard={() => {
-                    setActiveSidebarItem('Dashboard');
-                    window.location.hash = 'dashboard';
+                    navigate('/dashboard');
                   }}
                 />
               ) : (
@@ -402,32 +404,25 @@ export default function App() {
                   selectedServerId={selectedServerId}
                   onSelectServer={handleSelectServer}
                   onNavigateToServers={() => {
-                    setActiveSidebarItem('Servers');
-                    window.location.hash = 'servers';
+                    navigate('/servers');
                   }}
                   onOpenWelcomeSystem={() => {
-                    setActiveSidebarItem('Welcome System');
-                    window.location.hash = 'welcome';
+                    navigate('/welcome');
                   }}
                   onOpenLoggingSystem={() => {
-                    setActiveSidebarItem('Logging System');
-                    window.location.hash = 'logging';
+                    navigate('/logging');
                   }}
                   onOpenEmbedCreator={() => {
-                    setActiveSidebarItem('Embed Creator');
-                    window.location.hash = 'embed';
+                    navigate('/embed');
                   }}
                   onOpenModerationSystem={() => {
-                    setActiveSidebarItem('Moderacja');
-                    window.location.hash = 'moderation';
+                    navigate('/moderation');
                   }}
                   onOpenEconomySystem={() => {
-                    setActiveSidebarItem('Ekonomia System');
-                    window.location.hash = 'economy';
+                    navigate('/economy');
                   }}
                   onOpenAutoContent={() => {
-                    setActiveSidebarItem('Auto-Kontent');
-                    window.location.hash = 'auto-content';
+                    navigate('/auto-content');
                   }}
                   onMarkBotJoined={handleMarkBotJoined}
                 />

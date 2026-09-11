@@ -20,19 +20,16 @@ kitek-discord-bot/
 │   ├── moderation.js         # Automod (anty-linki, anty-spam) i komendy /wyczysc, /wycisz
 │   ├── logging.js            # Audit logi (usunięte wiadomości, edycje, wyjścia)
 │   └── economy.js            # Waluta serwera, nagroda /daily, /portfel, /przelej
-└── servers/                  # Baza konfiguracji per serwer:
-    ├── default.json          # Szablon domyślny dla nowych serwerów
-    ├── 1368350667634376785.json # Oficjalny serwer Kitek
-    ├── srv-1.json            # Konfiguracja serwera srv-1
-    ├── srv-2.json            # Konfiguracja serwera srv-2
-    └── srv-3.json            # Konfiguracja serwera srv-3
+└── servers/                  # Baza konfiguracji per serwer (nazwa pliku to ZAWSZE [id_serwera].json):
+    ├── default.json          # Szablon domyślny dla każdego nowego serwera
+    └── 1368350667634376785.json # Konfiguracja danego serwera (nazwa pliku = Snowflake ID serwera)
 ```
 
 ---
 
 ## ⚙️ Jak działa folder `servers/[guildId].json`?
 
-1. Gdy bot zostaje zaproszony na jakikolwiek serwer (`guildCreate`), moduł `cogs/guildTracker.js` sprawdza, czy w folderze `servers/` istnieje plik o nazwie `[guildId].json`.
+1. Gdy bot zostaje zaproszony na jakikolwiek serwer (`guildCreate`), moduł `cogs/guildTracker.js` sprawdza, czy w folderze `servers/` istnieje plik o nazwie `[guildId].json` (np. `1368350667634376785.json`).
 2. Jeśli plik nie istnieje, bot automatycznie kopiuje szablon z `servers/default.json`, uzupełnia ID i nazwę serwera, oraz zapisuje nowy plik `servers/[guildId].json`.
 3. Każdy cog (`welcome.js`, `moderation.js`, `autocontent.js`, etc.) odczytuje indywidualne preferencje danego serwera bezpośrednio ze swojego pliku JSON!
 4. Zmiany wprowadzone w Dashboardzie WWW lub bezpośrednio w pliku JSON działają natychmiastowo.
@@ -55,7 +52,7 @@ Wklej swój token bota z [Discord Developer Portal](https://discord.com/develope
 ```env
 DISCORD_BOT_TOKEN=twoj_token_bota_tutaj
 DISCORD_CLIENT_ID=1368350667634376785
-DASHBOARD_URL=https://twoj-dashboard.vercel.app
+DASHBOARD_URL=https://kitekbots.vercel.app
 ```
 
 > **Ważne w Discord Developer Portal:**
