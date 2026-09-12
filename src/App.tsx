@@ -410,36 +410,42 @@ export default function App() {
                 />
               ) : activeSidebarItem === 'Welcome System' ? (
                 <WelcomeSystemView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Logging System' ? (
                 <LoggingSystemView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Embed Creator' ? (
                 <EmbedCreatorView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Moderacja' ? (
                 <ModerationSystemView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Ekonomia System' ? (
                 <EconomySystemView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}
                 />
               ) : activeSidebarItem === 'Auto-Kontent' ? (
                 <AutoContentSystemView
+                  server={servers.find(s => s.id === selectedServerId) || servers[0]}
                   onBackToDashboard={() => {
                     navigate('/dashboard');
                   }}

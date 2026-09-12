@@ -29,9 +29,11 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { CustomSwitch } from './CustomSwitch';
+import { DiscordServer } from '../types';
 import { CustomSelect, SelectOption } from './CustomSelect';
 
 interface ModerationSystemViewProps {
+  server?: DiscordServer;
   onBackToDashboard: () => void;
 }
 
@@ -83,7 +85,7 @@ const SLOWMODE_OPTIONS: SelectOption[] = [
   { value: '21600', label: '6 godzin' },
 ];
 
-export const ModerationSystemView = ({ onBackToDashboard }: ModerationSystemViewProps) => {
+export const ModerationSystemView = ({ onBackToDashboard, server }: ModerationSystemViewProps) => {
   const [activeTab, setActiveTab] = useState<'tariff_automod' | 'commands' | 'simulator'>('tariff_automod');
   const [notification, setNotification] = useState<string | null>(null);
 

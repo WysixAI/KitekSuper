@@ -24,9 +24,11 @@ import {
   Hash,
 } from 'lucide-react';
 import { CustomSwitch } from './CustomSwitch';
+import { DiscordServer } from '../types';
 import { CustomSelect } from './CustomSelect';
 
 interface EconomySystemViewProps {
+  server?: DiscordServer;
   onBackToDashboard: () => void;
 }
 
@@ -89,7 +91,7 @@ export const formatMoneyValue = (amount: number, format: NumberFormatType): stri
   }
 };
 
-export const EconomySystemView = ({ onBackToDashboard }: EconomySystemViewProps) => {
+export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemViewProps) => {
   const [activeTab, setActiveTab] = useState<'settings' | 'modules' | 'shop'>('settings');
   const [notification, setNotification] = useState<string | null>(null);
 
