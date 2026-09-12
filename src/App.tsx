@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navbar } from './components/Navbar';
 import { Sidebar } from './components/Sidebar';
-import { ChangelogModal } from './components/ChangelogModal';
 import { DashboardView } from './components/DashboardView';
 import { WelcomeSystemView } from './components/WelcomeSystemView';
 import { LoggingSystemView } from './components/LoggingSystemView';
@@ -27,7 +26,6 @@ export default function App() {
   const [activePath, setActivePath] = useState<'/dashboard' | '/login'>('/dashboard');
   const [currentEdition] = useState<string>('Kitek 1.0');
   const [activeSubdomain, setActiveSubdomain] = useState<string>('bot.kitek.pl');
-  const [isChangelogOpen, setIsChangelogOpen] = useState<boolean>(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState<string>('Dashboard');
 
   // Załaduj sesję użytkownika z OAuth jeśli istnieje
@@ -319,7 +317,6 @@ export default function App() {
       {/* Top Navigation Bar */}
       <Navbar
         currentEdition={currentEdition}
-        onOpenChangelog={() => setIsChangelogOpen(true)}
         user={user}
         onLogout={handleLogout}
         activePath={activePath}
@@ -453,7 +450,6 @@ export default function App() {
               ) : (
                 <DashboardView
                   currentEdition={currentEdition}
-                  onOpenChangelog={() => setIsChangelogOpen(true)}
                   activeSubdomain={activeSubdomain}
                   servers={servers}
                   selectedServerId={selectedServerId}
@@ -504,13 +500,6 @@ export default function App() {
           handleMarkBotJoined(srvId);
           handleSelectServer(srvId, true);
         }}
-      />
-
-      {/* Changelog Modal */}
-      <ChangelogModal
-        isOpen={isChangelogOpen}
-        onClose={() => setIsChangelogOpen(false)}
-        currentEdition={currentEdition}
       />
     </div>
   );

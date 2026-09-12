@@ -22,7 +22,6 @@ import { getBotInviteUrl } from '../services/discordAuth';
 
 interface DashboardViewProps {
   currentEdition: string;
-  onOpenChangelog: () => void;
   activeSubdomain: string;
   isWelcomeModalOpen?: boolean;
   onCloseWelcomeModal?: () => void;

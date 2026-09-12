@@ -27,9 +27,17 @@ import {
   Sparkles,
   ExternalLink,
   Cpu,
+  History,
+  Search,
+  Filter,
+  Wrench,
+  Calendar,
+  Tag,
+  AlertCircle,
 } from 'lucide-react';
 import JSZip from 'jszip';
 import { DiscordServer, DiscordBotGatewayStatus } from '../types';
+import { BOT_CHANGELOG_DATA, BotUpdateLogItem } from '../data/botChangelog';
 
 interface BotsViewProps {
   servers: DiscordServer[];
@@ -425,7 +433,25 @@ export const BotsView = ({
   onBackToDashboard,
   onRefreshServers,
 }: BotsViewProps) => {
-  const [activeTab, setActiveTab] = useState<'package' | 'simulator' | 'vercel'>('package');
+  const [activeTab, setActiveTab] = useState<'package' | 'changelog' | 'simulator' | 'vercel'>('package');
+  const [changelogSearchQuery, setChangelogSearchQuery] = useState('');
+  const [changelogFilterType, setChangelogFilterType] = useState<'all' | 'fix' | 'feature' | 'improvement'>('all');
+  const [copiedLogId, setCopiedLogId] = useState<string | null>(null);
+
+  const handleCopyUpdateLog = (log: BotUpdateLogItem) => {
+    const text = `📋 [AKTUALIZACJA BOTA KITEK v${log.version}] - ${log.title}
+📅 Data: ${log.date}
+Opis: ${log.summary}
+
+Zmiany:
+${log.changes.map((c) => `• [${c.type.toUpperCase()}] ${c.text}${c.details ? ` - ${c.details}` : ''}`).join('\n')}
+
+Zmodyfikowane pliki bota:
+${log.affectedFiles.map((f) => `- ${f}`).join('\n')}`;
+    navigator.clipboard.writeText(text);
+    setCopiedLogId(log.id);
+    setTimeout(() => setCopiedLogId(null), 2500);
+  };
   const [files, setFiles] = useState<BotFileItem[]>(FALLBACK_FILES);
   const [selectedFilePath, setSelectedFilePath] = useState<string>('cogs/guildTracker.js');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -825,6 +851,23 @@ export const BotsView = ({
         </button>
 
         <button
+          id="bot-tab-changelog-btn"
+          type="button"
+          onClick={() => setActiveTab('changelog')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+            activeTab === 'changelog'
+              ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm shadow-emerald-950/20'
+              : 'text-zinc-400 hover:text-white hover:bg-[#20242a]'
+          }`}
+        >
+          <History className="w-4 h-4 text-emerald-400" />
+          <span>Dziennik Zmian Bota (Update Log)</span>
+          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold">
+            v{BOT_CHANGELOG_DATA[0]?.version || '1.2.4'}
+          </span>
+        </button>
+
+        <button
           type="button"
           onClick={() => setActiveTab('simulator')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -1153,6 +1196,271 @@ export const BotsView = ({
                     </code>
                   </pre>
                 )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* TAB: DZIENNIK ZMIAN BOTA (CHANGELOG & UPDATE LOG)                        */}
+      {/* ========================================================================= */}
+      {activeTab === 'changelog' && (
+        <div className="space-y-6">
+          {/* Header Banner */}
+          <div className="bg-gradient-to-r from-[#1b2723] via-[#1c2229] to-[#1a1d21] border border-emerald-500/20 rounded-2xl p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="space-y-1.5 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400">
+                  <History className="w-4 h-4" />
+                </div>
+                <h2 className="text-base font-bold text-white">
+                  Dziennik Zmian & Aktualizacji Bota (Bot Update Log)
+                </h2>
+                <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold">
+                  v{BOT_CHANGELOG_DATA[0]?.version || '1.2.4'}
+                </span>
+              </div>
+              <p className="text-xs text-zinc-300 leading-relaxed">
+                Rejestr wszystkich modyfikacji wprowadzanych w silniku bota (<code className="text-emerald-300 font-mono bg-[#141619] px-1 py-0.5 rounded">bot/index.js</code>), modułach cogs (<code className="text-emerald-300 font-mono bg-[#141619] px-1 py-0.5 rounded">bot/cogs/*.js</code>), szablonach wieloserwerowych (<code className="text-emerald-300 font-mono bg-[#141619] px-1 py-0.5 rounded">servers/*.json</code>) oraz dwukierunkowej synchronizacji z Panelem WWW. Za każdym razem po aktualizacji bota pojawia się tu nowy wpis.
+              </p>
+            </div>
+
+            <div className="flex sm:flex-col items-center sm:items-end justify-between gap-2 border-t sm:border-t-0 pt-3 sm:pt-0 border-[#2b3038]">
+              <div className="text-right">
+                <span className="text-[10px] text-zinc-400 block font-mono">BIEŻĄCA WERSJA</span>
+                <span className="text-sm font-bold text-emerald-400 font-mono">v{BOT_CHANGELOG_DATA[0]?.version || '1.2.4'}</span>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-zinc-400 block font-mono">OSTATNI UPDATE</span>
+                <span className="text-xs font-semibold text-zinc-200">{BOT_CHANGELOG_DATA[0]?.date.split(' ')[0]}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Filtry i wyszukiwarka */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-[#20242a] p-3 rounded-xl border border-[#2b3038]">
+            <div className="relative flex-1">
+              <Search className="w-4 h-4 text-zinc-500 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={changelogSearchQuery}
+                onChange={(e) => setChangelogSearchQuery(e.target.value)}
+                placeholder="Szukaj w zmianach (np. role, embed, guildTracker, default.json)..."
+                className="w-full bg-[#16181b] border border-[#2b3038] rounded-lg pl-9 pr-3 py-2 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-emerald-500/50"
+              />
+              {changelogSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setChangelogSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-zinc-500 hover:text-white"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+              <span className="text-[11px] text-zinc-400 flex items-center gap-1 pr-1 pl-1">
+                <Filter className="w-3 h-3" /> Filtr:
+              </span>
+              {(['all', 'fix', 'feature', 'improvement'] as const).map((filterType) => (
+                <button
+                  key={filterType}
+                  type="button"
+                  onClick={() => setChangelogFilterType(filterType)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                    changelogFilterType === filterType
+                      ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold'
+                      : 'bg-[#181a1e] text-zinc-400 hover:text-white border border-[#2b3038]'
+                  }`}
+                >
+                  {filterType === 'all'
+                    ? `Wszystkie (${BOT_CHANGELOG_DATA.length})`
+                    : filterType === 'fix'
+                    ? 'Poprawki (Fix)'
+                    : filterType === 'feature'
+                    ? 'Nowości'
+                    : 'Usprawnienia'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Lista Wydań / Karty Update Log */}
+          <div className="space-y-4">
+            {BOT_CHANGELOG_DATA.filter((item) => {
+              const query = changelogSearchQuery.toLowerCase();
+              const matchesSearch =
+                !query ||
+                item.title.toLowerCase().includes(query) ||
+                item.version.toLowerCase().includes(query) ||
+                item.summary.toLowerCase().includes(query) ||
+                item.affectedFiles.some((f) => f.toLowerCase().includes(query)) ||
+                item.changes.some((c) => c.text.toLowerCase().includes(query) || (c.details && c.details.toLowerCase().includes(query)));
+
+              if (!matchesSearch) return false;
+              if (changelogFilterType === 'all') return true;
+              return item.changes.some((c) => c.type === changelogFilterType);
+            }).map((item) => (
+              <div
+                key={item.id}
+                className="bg-[#20242a] border border-[#2b3038] hover:border-emerald-500/30 rounded-2xl p-5 sm:p-6 space-y-4 transition-all shadow-md"
+              >
+                {/* Górny wiersz karty wersji */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2b3038]">
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="text-base font-extrabold text-white font-mono tracking-tight flex items-center gap-1.5">
+                      <span className="text-emerald-400">v{item.version}</span>
+                    </span>
+
+                    <span
+                      className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono uppercase tracking-wider border ${
+                        item.badge === 'NAJNOWSZY'
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                          : item.badge === 'CORE ENGINE'
+                          ? 'bg-blue-500/20 text-blue-300 border-blue-500/40'
+                          : item.badge === 'HOTFIX'
+                          ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                          : 'bg-purple-500/20 text-purple-300 border-purple-500/40'
+                      }`}
+                    >
+                      {item.badge}
+                    </span>
+
+                    <span className="text-xs text-zinc-400 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-zinc-500" />
+                      <span>{item.date}</span>
+                    </span>
+                  </div>
+
+                  {/* Przycisk kopiowania raportu wersji */}
+                  <button
+                    type="button"
+                    onClick={() => handleCopyUpdateLog(item)}
+                    className="self-start sm:self-auto flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#16181b] hover:bg-[#282e36] text-zinc-300 hover:text-white border border-[#2b3038] text-xs font-semibold transition-all cursor-pointer"
+                    title="Kopiuj podsumowanie wersji do schowka (np. na kanał ogłoszeń)"
+                  >
+                    {copiedLogId === item.id ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400" />
+                        <span className="text-emerald-400">Skopiowano raport!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5 text-zinc-400" />
+                        <span>Kopiuj wpis</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* Tytuł i Podsumowanie */}
+                <div className="space-y-2">
+                  <h3 className="text-sm sm:text-base font-bold text-white flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                    <span>{item.title}</span>
+                  </h3>
+                  <div className="bg-[#17191d] p-3 rounded-xl border border-[#2b3038]/60 text-xs text-zinc-300 leading-relaxed">
+                    {item.summary}
+                  </div>
+                </div>
+
+                {/* Zmodyfikowane pliki bota */}
+                {item.affectedFiles.length > 0 && (
+                  <div className="space-y-1.5">
+                    <span className="text-[11px] font-semibold text-zinc-400 flex items-center gap-1">
+                      <FileCode className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Zmodyfikowane pliki silnika bota:</span>
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.affectedFiles.map((filePath) => (
+                        <span
+                          key={filePath}
+                          className="px-2 py-0.5 rounded bg-[#16181b] border border-[#2b3038] text-zinc-300 font-mono text-[11px] flex items-center gap-1"
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                          <span>{filePath}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Lista szczegółowych zmian */}
+                <div className="space-y-2 pt-1">
+                  <span className="text-[11px] font-semibold text-zinc-400 block">
+                    Wprowadzone ulepszenia i poprawki:
+                  </span>
+                  <div className="space-y-2">
+                    {item.changes
+                      .filter((c) => changelogFilterType === 'all' || c.type === changelogFilterType)
+                      .map((change, cIdx) => (
+                        <div
+                          key={cIdx}
+                          className="bg-[#191c20] p-3 rounded-xl border border-[#2b3038] space-y-1"
+                        >
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider ${
+                                change.type === 'fix'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : change.type === 'feature'
+                                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                                  : change.type === 'security'
+                                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                  : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                              }`}
+                            >
+                              {change.type === 'fix'
+                                ? 'POPRAWKA'
+                                : change.type === 'feature'
+                                ? 'NOWOŚĆ'
+                                : change.type === 'security'
+                                ? 'BEZPIECZEŃSTWO'
+                                : 'USPRAWNIENIE'}
+                            </span>
+                            <span className="text-xs font-semibold text-zinc-100">{change.text}</span>
+                          </div>
+                          {change.details && (
+                            <p className="text-[11px] text-zinc-400 pl-1 leading-relaxed">
+                              {change.details}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Karta informacyjna jak wdrożyć aktualizacje na serwerze hostingowym */}
+          <div className="bg-[#17191d] border border-emerald-500/20 rounded-2xl p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <h4 className="text-xs font-bold text-white uppercase tracking-wider">
+                Jak wdrożyć najnowszą wersję na swój hosting bota?
+              </h4>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-zinc-300">
+              <div className="bg-[#20242a] p-3 rounded-xl border border-[#2b3038] space-y-1">
+                <span className="font-bold text-emerald-400 block font-mono">1. Pobierz ZIP</span>
+                <p className="text-[11px] text-zinc-400">
+                  Użyj przycisku <strong className="text-white">„Pobierz Całą Paczkę”</strong> u góry tej strony, by otrzymać świeżą paczkę z folderami <code className="text-emerald-300 font-mono">cogs/</code> oraz <code className="text-emerald-300 font-mono">servers/</code>.
+                </p>
+              </div>
+              <div className="bg-[#20242a] p-3 rounded-xl border border-[#2b3038] space-y-1">
+                <span className="font-bold text-emerald-400 block font-mono">2. Podmień pliki</span>
+                <p className="text-[11px] text-zinc-400">
+                  Wgraj i rozpakuj pliki na swoim serwerze (VPS / Pterodactyl / Railway). Folder <code className="text-emerald-300 font-mono">servers/</code> zachowa istniejące dane serwerów.
+                </p>
+              </div>
+              <div className="bg-[#20242a] p-3 rounded-xl border border-[#2b3038] space-y-1">
+                <span className="font-bold text-emerald-400 block font-mono">3. Zrestartuj proces</span>
+                <p className="text-[11px] text-zinc-400">
+                  Wpisz w konsoli bota <code className="text-emerald-300 font-mono">node index.js</code> lub <code className="text-emerald-300 font-mono">pm2 restart kitek</code>. Bot automatycznie załaduje nowe cogsy!
+                </p>
               </div>
             </div>
           </div>

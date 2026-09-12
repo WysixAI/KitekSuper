@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Cat,
-  Sparkles,
   LogOut,
   ChevronDown,
   ShieldCheck,
@@ -11,7 +10,6 @@ import { DiscordUser } from '../types';
 
 interface NavbarProps {
   currentEdition: string;
-  onOpenChangelog: () => void;
   user: DiscordUser | null;
   onLogout: () => void;
   activePath?: '/dashboard' | '/login';
@@ -20,7 +18,6 @@ interface NavbarProps {
 
 export const Navbar = ({
   currentEdition,
-  onOpenChangelog,
   user,
   onLogout,
   onNavigate,
@@ -47,19 +44,8 @@ export const Navbar = ({
             </div>
           </div>
 
-          {/* RIGHT: Changelog + Profil użytkownika z czerwonym przyciskiem wylogowania */}
+          {/* RIGHT: Profil użytkownika z czerwonym przyciskiem wylogowania */}
           <div className="flex items-center gap-3">
-            {/* Przycisk Changelog obok profilu */}
-            <button
-              id="changelog-btn-top"
-              onClick={onOpenChangelog}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#18261e] border border-emerald-500/50 hover:border-emerald-400 text-emerald-300 text-xs font-semibold shadow-sm transition-all"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Changelog</span>
-              <span className="text-[10px] px-1.5 py-0.2 bg-amber-500/20 text-amber-300 border border-amber-500/40 font-bold rounded font-mono">BETA</span>
-            </button>
-
             {/* Profil użytkownika z czerwonym przyciskiem wylogowania wysuwającym się od spodu */}
             <div
               id="profile-hover-wrapper"
