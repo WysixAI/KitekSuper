@@ -2,12 +2,18 @@ export type MessageFormatMode = 'text' | 'embed_v1' | 'embed_v2';
 
 export type ButtonStyle = 'success' | 'primary' | 'secondary' | 'danger' | 'link';
 
+export type ComponentActionType = 'none' | 'add_role' | 'remove_role' | 'toggle_role' | 'ephemeral_msg';
+
 export interface DiscordButton {
   id: string;
   label: string;
   style: ButtonStyle;
   emoji?: string;
   url?: string;
+  actionType?: ComponentActionType;
+  targetRoleId?: string;
+  targetRoleName?: string;
+  customMessage?: string;
 }
 
 export interface DiscordSelectOption {
@@ -16,6 +22,10 @@ export interface DiscordSelectOption {
   description?: string;
   emoji?: string;
   value: string;
+  actionType?: ComponentActionType;
+  targetRoleId?: string;
+  targetRoleName?: string;
+  customMessage?: string;
 }
 
 export interface DiscordField {

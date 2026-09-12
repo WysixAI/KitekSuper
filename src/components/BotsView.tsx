@@ -267,6 +267,83 @@ export default function setupEconomy(client, context) {
 }`,
   },
   {
+    name: 'interactions.js',
+    path: 'cogs/interactions.js',
+    category: 'cogs',
+    description: 'Obsługa przycisków, menu wyboru, nadawania/odbierania ról (Action Roles) i komunikatów ephemeral',
+    content: `export default function setupInteractions(client, context) {
+  const { getServerConfig } = context;
+
+  client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
+    const { guild, member, customId } = interaction;
+    if (!guild || !member) return;
+
+    let actionType = null;
+    let targetRole = null;
+    let customMsg = null;
+
+    if (customId.startsWith('ktk:act:')) {
+      const parts = customId.split(':');
+      actionType = parts[2];
+      targetRole = parts[3];
+    } else if (customId.startsWith('ktk:sel:')) {
+      const selectedVal = interaction.values?.[0];
+      if (selectedVal && selectedVal.startsWith('ktk:act:')) {
+        const parts = selectedVal.split(':');
+        actionType = parts[2];
+        targetRole = parts[3];
+      }
+    }
+
+    if (!actionType || actionType === 'none') {
+      if (interaction.isButton()) {
+        return interaction.reply({ content: '👌 Zarejestrowano kliknięcie!', ephemeral: true });
+      }
+      return interaction.reply({ content: \`👌 Wybrano opcję: \${interaction.values?.[0] || 'Opcja'}\`, ephemeral: true });
+    }
+
+    if (actionType === 'ephemeral_msg') {
+      return interaction.reply({ content: customMsg || '💬 Prywatna wiadomość od bota Kitek!', ephemeral: true });
+    }
+
+    // Role actions
+    const role = guild.roles.cache.get(targetRole) || guild.roles.cache.find(r => r.name.toLowerCase() === targetRole?.toLowerCase());
+    if (!role) {
+      return interaction.reply({ content: \`⚠️ Nie odnaleziono roli "\${targetRole}" na tym serwerze.\`, ephemeral: true });
+    }
+
+    try {
+      if (actionType === 'add_role') {
+        if (member.roles.cache.has(role.id)) {
+          return interaction.reply({ content: \`Posiadasz już rolę **\${role.name}**!\`, ephemeral: true });
+        }
+        await member.roles.add(role);
+        return interaction.reply({ content: customMsg || \`✅ Pomyślnie nadano rolę **\${role.name}**!\`, ephemeral: true });
+      }
+      if (actionType === 'remove_role') {
+        if (!member.roles.cache.has(role.id)) {
+          return interaction.reply({ content: \`Nie posiadasz roli **\${role.name}**.\`, ephemeral: true });
+        }
+        await member.roles.remove(role);
+        return interaction.reply({ content: customMsg || \`🗑️ Pomyślnie odebrano rolę **\${role.name}**!\`, ephemeral: true });
+      }
+      if (actionType === 'toggle_role') {
+        if (member.roles.cache.has(role.id)) {
+          await member.roles.remove(role);
+          return interaction.reply({ content: \`🔄 Odebrano rolę **\${role.name}**!\`, ephemeral: true });
+        } else {
+          await member.roles.add(role);
+          return interaction.reply({ content: \`🔄 Nadano rolę **\${role.name}**!\`, ephemeral: true });
+        }
+      }
+    } catch (err) {
+      return interaction.reply({ content: \`❌ Błąd zarządzania rolą: \${err.message}\`, ephemeral: true });
+    }
+  });
+}`,
+  },
+  {
     name: 'default.json',
     path: 'servers/default.json',
     category: 'servers',

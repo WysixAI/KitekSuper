@@ -14,6 +14,8 @@ import {
   Minus,
   Sparkles,
   ExternalLink,
+  Shield,
+  MessageSquare,
 } from 'lucide-react';
 import {
   MessageContainer,
@@ -22,17 +24,21 @@ import {
   DiscordButton,
   DiscordSelectOption,
   ButtonStyle,
+  ComponentActionType,
 } from '../types/embed';
+import { ServerRole } from '../types';
 import { CustomSelect } from './CustomSelect';
 
 interface MessageStyleEditorProps {
   containers: MessageContainer[];
   onChangeContainers: (containers: MessageContainer[]) => void;
+  serverRoles?: ServerRole[];
 }
 
 export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
   containers,
   onChangeContainers,
+  serverRoles = [],
 }) => {
   // Menu rozwijane "Add Component ^" dla każdego kontenera
   const [openMenuContainerId, setOpenMenuContainerId] = useState<string | null>(null);
@@ -295,7 +301,7 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
     compIdx: number,
     btnIdx: number,
     field: keyof DiscordButton,
-    val: string
+    val: any
   ) => {
     const container = containers[cIdx];
     const comp = container.components[compIdx];
@@ -350,7 +356,7 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
     compIdx: number,
     optIdx: number,
     field: keyof DiscordSelectOption,
-    val: string
+    val: any
   ) => {
     const container = containers[cIdx];
     const comp = container.components[compIdx];
@@ -829,81 +835,95 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                   )}
                                 </div>
 
-                                <div className="space-y-2">
+                                <div className="space-y-2.5">
                                   {comp.buttons?.map((btn, btnIdx) => (
                                     <div
                                       key={btn.id}
-                                      className="p-2.5 rounded-lg bg-[#14161a] border border-[#272b33] grid grid-cols-1 sm:grid-cols-12 gap-2 items-center"
+                                      className="p-3 rounded-lg bg-[#14161a] border border-[#272b33] space-y-2.5 shadow-sm"
                                     >
-                                      {/* Emotka */}
-                                      <div className="sm:col-span-2">
-                                        <div className="flex items-center bg-[#1c2026] border border-[#2b3038] rounded px-2 py-1">
-                                          <Smile className="w-3 h-3 text-zinc-400 mr-1 shrink-0" />
+                                      {/* Górny wiersz: Emotka + Etykieta + Styl + Usuń */}
+                                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
+                                        <div className="sm:col-span-2">
+                                          <div className="flex items-center bg-[#1c2026] border border-[#2b3038] rounded px-2 py-1.5">
+                                            <Smile className="w-3.5 h-3.5 text-zinc-400 mr-1.5 shrink-0" />
+                                            <input
+                                              type="text"
+                                              value={btn.emoji || ''}
+                                              onChange={(e) =>
+                                                handleUpdateButton(
+                                                  cIdx,
+                                                  compIdx,
+                                                  btnIdx,
+                                                  'emoji',
+                                                  e.target.value
+                                                )
+                                              }
+                                              placeholder="Emoji"
+                                              className="w-full bg-transparent border-0 outline-none text-white text-xs"
+                                            />
+                                          </div>
+                                        </div>
+
+                                        <div className="sm:col-span-5">
                                           <input
                                             type="text"
-                                            value={btn.emoji || ''}
+                                            value={btn.label}
                                             onChange={(e) =>
                                               handleUpdateButton(
                                                 cIdx,
                                                 compIdx,
                                                 btnIdx,
-                                                'emoji',
+                                                'label',
                                                 e.target.value
                                               )
                                             }
-                                            placeholder="Emoji"
-                                            className="w-full bg-transparent border-0 outline-none text-white text-xs"
+                                            placeholder="Etykieta przycisku"
+                                            className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1.5 text-white text-xs outline-none focus:border-emerald-500"
                                           />
+                                        </div>
+
+                                        <div className="sm:col-span-4">
+                                          <CustomSelect
+                                            value={btn.style}
+                                            onChange={(val) =>
+                                              handleUpdateButton(
+                                                cIdx,
+                                                compIdx,
+                                                btnIdx,
+                                                'style',
+                                                val as ButtonStyle
+                                              )
+                                            }
+                                            options={[
+                                              { value: 'success', label: 'Success (Zielony)', prefix: '🟢' },
+                                              { value: 'primary', label: 'Primary (Blurple)', prefix: '🟣' },
+                                              { value: 'secondary', label: 'Secondary (Szary)', prefix: '⚪' },
+                                              { value: 'danger', label: 'Danger (Czerwony)', prefix: '🔴' },
+                                              { value: 'link', label: 'Link (URL)', prefix: '🔗' },
+                                            ]}
+                                            size="sm"
+                                            triggerClassName="bg-[#1c2026] border-[#2b3038]"
+                                          />
+                                        </div>
+
+                                        <div className="sm:col-span-1 flex justify-end">
+                                          <button
+                                            type="button"
+                                            onClick={() =>
+                                              handleDeleteButton(cIdx, compIdx, btnIdx)
+                                            }
+                                            className="p-1.5 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                            title="Usuń przycisk"
+                                          >
+                                            <Trash2 className="w-4 h-4" />
+                                          </button>
                                         </div>
                                       </div>
 
-                                      {/* Label */}
-                                      <div className="sm:col-span-4">
-                                        <input
-                                          type="text"
-                                          value={btn.label}
-                                          onChange={(e) =>
-                                            handleUpdateButton(
-                                              cIdx,
-                                              compIdx,
-                                              btnIdx,
-                                              'label',
-                                              e.target.value
-                                            )
-                                          }
-                                          placeholder="Etykieta przycisku"
-                                          className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1 text-white text-xs outline-none focus:border-emerald-500"
-                                        />
-                                      </div>
-
-                                      {/* Style */}
-                                      <div className="sm:col-span-3">
-                                        <CustomSelect
-                                          value={btn.style}
-                                          onChange={(val) =>
-                                            handleUpdateButton(
-                                              cIdx,
-                                              compIdx,
-                                              btnIdx,
-                                              'style',
-                                              val as ButtonStyle
-                                            )
-                                          }
-                                          options={[
-                                            { value: 'success', label: 'Success (Zielony)', prefix: '🟢' },
-                                            { value: 'primary', label: 'Primary (Blurple)', prefix: '🟣' },
-                                            { value: 'secondary', label: 'Secondary (Szary)', prefix: '⚪' },
-                                            { value: 'danger', label: 'Danger (Czerwony)', prefix: '🔴' },
-                                            { value: 'link', label: 'Link (URL)', prefix: '🔗' },
-                                          ]}
-                                          size="sm"
-                                          triggerClassName="bg-[#1c2026] border-[#2b3038]"
-                                        />
-                                      </div>
-
-                                      {/* Link URL lub Usuń */}
-                                      <div className="sm:col-span-3 flex items-center gap-1.5">
-                                        {btn.style === 'link' ? (
+                                      {/* Dolny panel: Link URL lub Konfiguracja Akcji Bota (Nadanie/Zabranie roli, itp.) */}
+                                      {btn.style === 'link' ? (
+                                        <div className="flex items-center gap-2 pt-1 border-t border-[#202328]">
+                                          <ExternalLink className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                                           <input
                                             type="text"
                                             value={btn.url || ''}
@@ -916,25 +936,141 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                 e.target.value
                                               )
                                             }
-                                            placeholder="https://"
-                                            className="flex-1 bg-[#1c2026] border border-[#2b3038] rounded px-2 py-1 text-[11px] text-white outline-none focus:border-emerald-500"
+                                            placeholder="https://... (Adres URL strony www otwieranej po kliknięciu)"
+                                            className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1 text-xs text-white outline-none focus:border-emerald-500"
                                           />
-                                        ) : (
-                                          <span className="flex-1 text-[10px] text-zinc-500 font-mono truncate">
-                                            Akcja bota
-                                          </span>
-                                        )}
+                                        </div>
+                                      ) : (
+                                        <div className="p-2.5 rounded bg-[#181a1f] border border-[#23272f] space-y-2 text-xs">
+                                          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                            <div className="sm:w-1/3">
+                                              <label className="text-[10px] uppercase font-bold text-zinc-400 font-mono block mb-1">
+                                                Akcja bota (Discord Action)
+                                              </label>
+                                              <CustomSelect
+                                                value={btn.actionType || 'none'}
+                                                onChange={(val) =>
+                                                  handleUpdateButton(
+                                                    cIdx,
+                                                    compIdx,
+                                                    btnIdx,
+                                                    'actionType',
+                                                    val as ComponentActionType
+                                                  )
+                                                }
+                                                options={[
+                                                  { value: 'none', label: 'Brak akcji (Zwykły klik)', prefix: '⚪' },
+                                                  { value: 'add_role', label: 'Nadaj rolę (Add Role)', prefix: '➕' },
+                                                  { value: 'remove_role', label: 'Zabierz rolę (Remove Role)', prefix: '➖' },
+                                                  { value: 'toggle_role', label: 'Przełącz rolę (Toggle Role)', prefix: '🔄' },
+                                                  { value: 'ephemeral_msg', label: 'Prywatna wiadomość', prefix: '💬' },
+                                                ]}
+                                                size="sm"
+                                                triggerClassName="bg-[#121417] border-[#2b3038]"
+                                              />
+                                            </div>
 
-                                        <button
-                                          type="button"
-                                          onClick={() =>
-                                            handleDeleteButton(cIdx, compIdx, btnIdx)
-                                          }
-                                          className="p-1 rounded text-zinc-500 hover:text-rose-400"
-                                        >
-                                          <Trash2 className="w-3.5 h-3.5" />
-                                        </button>
-                                      </div>
+                                            {['add_role', 'remove_role', 'toggle_role'].includes(btn.actionType || '') && (
+                                              <div className="sm:w-2/3 space-y-1">
+                                                <label className="text-[10px] uppercase font-bold text-zinc-400 font-mono flex items-center justify-between">
+                                                  <span>Wybierz rolę docelową</span>
+                                                  {btn.targetRoleId && (
+                                                    <span className="text-emerald-400 font-normal">
+                                                      {btn.targetRoleName || btn.targetRoleId}
+                                                    </span>
+                                                  )}
+                                                </label>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                                  <CustomSelect
+                                                    value={
+                                                      serverRoles.some((r) => r.id === btn.targetRoleId)
+                                                        ? btn.targetRoleId!
+                                                        : btn.targetRoleId
+                                                        ? 'custom'
+                                                        : ''
+                                                    }
+                                                    onChange={(roleId) => {
+                                                      if (roleId === 'custom') {
+                                                        // Użytkownik wpisuje w polu obok
+                                                      } else {
+                                                        const found = serverRoles.find((r) => r.id === roleId);
+                                                        handleUpdateButton(
+                                                          cIdx,
+                                                          compIdx,
+                                                          btnIdx,
+                                                          'targetRoleId',
+                                                          roleId
+                                                        );
+                                                        if (found) {
+                                                          handleUpdateButton(
+                                                            cIdx,
+                                                            compIdx,
+                                                            btnIdx,
+                                                            'targetRoleName',
+                                                            found.name
+                                                          );
+                                                        }
+                                                      }
+                                                    }}
+                                                    options={[
+                                                      ...(serverRoles.length > 0
+                                                        ? serverRoles.map((r) => ({
+                                                            value: r.id,
+                                                            label: r.name,
+                                                            prefix: '🛡️',
+                                                          }))
+                                                        : [
+                                                            { value: 'role_vip', label: 'VIP (Przykładowa)', prefix: '🛡️' },
+                                                            { value: 'role_gracz', label: 'Gracz / Nowy', prefix: '🛡️' },
+                                                            { value: 'role_notifs', label: 'Powiadomienia', prefix: '🛡️' },
+                                                          ]),
+                                                      { value: 'custom', label: 'Wpisz ręcznie ID / Nazwę...', prefix: '✏️' },
+                                                    ]}
+                                                    placeholder="Wybierz rolę z serwera..."
+                                                    size="sm"
+                                                    triggerClassName="bg-[#121417] border-[#2b3038]"
+                                                  />
+                                                  <input
+                                                    type="text"
+                                                    value={btn.targetRoleId || ''}
+                                                    onChange={(e) => {
+                                                      const val = e.target.value;
+                                                      handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleId', val);
+                                                      const found = serverRoles.find(
+                                                        (r) => r.id === val || r.name.toLowerCase() === val.toLowerCase()
+                                                      );
+                                                      if (found) {
+                                                        handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleName', found.name);
+                                                      }
+                                                    }}
+                                                    placeholder="Wpisz ID roli lub nazwę..."
+                                                    className="bg-[#121417] border border-[#2b3038] rounded px-2.5 py-1 text-xs text-white outline-none focus:border-emerald-500"
+                                                  />
+                                                </div>
+                                              </div>
+                                            )}
+                                          </div>
+
+                                          {/* Opcjonalny własny komunikat dla akcji */}
+                                          {btn.actionType && btn.actionType !== 'none' && (
+                                            <div className="pt-1.5 border-t border-[#23272f]/60">
+                                              <input
+                                                type="text"
+                                                value={btn.customMessage || ''}
+                                                onChange={(e) =>
+                                                  handleUpdateButton(cIdx, compIdx, btnIdx, 'customMessage', e.target.value)
+                                                }
+                                                placeholder={
+                                                  btn.actionType === 'ephemeral_msg'
+                                                    ? 'Wpisz treść prywatnej wiadomości (widocznej tylko dla klikającego)...'
+                                                    : 'Opcjonalny komunikat zwrotny (np. "Otrzymałeś rangę VIP!", domyślny jeśli pusty)'
+                                                }
+                                                className="w-full bg-[#121417] border border-[#2b3038] rounded px-2.5 py-1 text-[11px] text-zinc-300 outline-none focus:border-emerald-500 placeholder-zinc-500"
+                                              />
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                   ))}
                                 </div>
@@ -1003,12 +1139,13 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                   {comp.options?.map((opt, optIdx) => (
                                     <div
                                       key={opt.id}
-                                      className="p-2.5 rounded-lg bg-[#14161a] border border-[#272b33] space-y-2"
+                                      className="p-3 rounded-lg bg-[#14161a] border border-[#272b33] space-y-2.5 shadow-sm"
                                     >
+                                      {/* Górny wiersz: Emoji + Label + Kosz */}
                                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-center">
                                         <div className="sm:col-span-3">
-                                          <div className="flex items-center bg-[#1c2026] border border-[#2b3038] rounded px-2 py-1">
-                                            <Smile className="w-3 h-3 text-zinc-400 mr-1 shrink-0" />
+                                          <div className="flex items-center bg-[#1c2026] border border-[#2b3038] rounded px-2 py-1.5">
+                                            <Smile className="w-3.5 h-3.5 text-zinc-400 mr-1.5 shrink-0" />
                                             <input
                                               type="text"
                                               value={opt.emoji || ''}
@@ -1021,7 +1158,7 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                   e.target.value
                                                 )
                                               }
-                                              placeholder="EMOJI"
+                                              placeholder="Emoji"
                                               className="w-full bg-transparent border-0 outline-none text-white text-xs"
                                             />
                                           </div>
@@ -1041,8 +1178,8 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                 e.target.value
                                               )
                                             }
-                                            placeholder="LABEL"
-                                            className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1 text-white text-xs outline-none focus:border-emerald-500"
+                                            placeholder="Tytuł opcji (np. Rola VIP / Powiadomienia)"
+                                            className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1.5 text-white text-xs outline-none focus:border-emerald-500"
                                           />
                                         </div>
 
@@ -1056,13 +1193,15 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                 optIdx
                                               )
                                             }
-                                            className="p-1 rounded text-zinc-500 hover:text-rose-400"
+                                            className="p-1.5 rounded text-zinc-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+                                            title="Usuń opcję"
                                           >
-                                            <Trash2 className="w-3.5 h-3.5" />
+                                            <Trash2 className="w-4 h-4" />
                                           </button>
                                         </div>
                                       </div>
 
+                                      {/* Opis opcji */}
                                       <div className="space-y-0.5">
                                         <input
                                           type="text"
@@ -1077,9 +1216,140 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                               e.target.value
                                             )
                                           }
-                                          placeholder="DESCRIPTION (Opcjonalny opis...)"
+                                          placeholder="Opcjonalny opis pomocniczy (widoczny w rozwijanym menu pod etykietą)..."
                                           className="w-full bg-[#1c2026] border border-[#2b3038] rounded px-2.5 py-1 text-zinc-300 text-[11px] outline-none focus:border-emerald-500"
                                         />
+                                      </div>
+
+                                      {/* Konfiguracja akcji opcji (Nadanie roli, zabranie itp.) */}
+                                      <div className="p-2.5 rounded bg-[#181a1f] border border-[#23272f] space-y-2 text-xs">
+                                        <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                          <div className="sm:w-1/3">
+                                            <label className="text-[10px] uppercase font-bold text-zinc-400 font-mono block mb-1">
+                                              Akcja po wybraniu
+                                            </label>
+                                            <CustomSelect
+                                              value={opt.actionType || 'none'}
+                                              onChange={(val) =>
+                                                handleUpdateSelectOption(
+                                                  cIdx,
+                                                  compIdx,
+                                                  optIdx,
+                                                  'actionType',
+                                                  val as ComponentActionType
+                                                )
+                                              }
+                                              options={[
+                                                { value: 'none', label: 'Brak akcji (Zwykły wybór)', prefix: '⚪' },
+                                                { value: 'add_role', label: 'Nadaj rolę (Add Role)', prefix: '➕' },
+                                                { value: 'remove_role', label: 'Zabierz rolę (Remove Role)', prefix: '➖' },
+                                                { value: 'toggle_role', label: 'Przełącz rolę (Toggle)', prefix: '🔄' },
+                                                { value: 'ephemeral_msg', label: 'Prywatna wiadomość', prefix: '💬' },
+                                              ]}
+                                              size="sm"
+                                              triggerClassName="bg-[#121417] border-[#2b3038]"
+                                            />
+                                          </div>
+
+                                          {['add_role', 'remove_role', 'toggle_role'].includes(opt.actionType || '') && (
+                                            <div className="sm:w-2/3 space-y-1">
+                                              <label className="text-[10px] uppercase font-bold text-zinc-400 font-mono flex items-center justify-between">
+                                                <span>Wybierz rolę</span>
+                                                {opt.targetRoleId && (
+                                                  <span className="text-emerald-400 font-normal">
+                                                    {opt.targetRoleName || opt.targetRoleId}
+                                                  </span>
+                                                )}
+                                              </label>
+                                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                                                <CustomSelect
+                                                  value={
+                                                    serverRoles.some((r) => r.id === opt.targetRoleId)
+                                                      ? opt.targetRoleId!
+                                                      : opt.targetRoleId
+                                                      ? 'custom'
+                                                      : ''
+                                                  }
+                                                  onChange={(roleId) => {
+                                                    if (roleId === 'custom') {
+                                                      // Wpis ręczny
+                                                    } else {
+                                                      const found = serverRoles.find((r) => r.id === roleId);
+                                                      handleUpdateSelectOption(
+                                                        cIdx,
+                                                        compIdx,
+                                                        optIdx,
+                                                        'targetRoleId',
+                                                        roleId
+                                                      );
+                                                      if (found) {
+                                                        handleUpdateSelectOption(
+                                                          cIdx,
+                                                          compIdx,
+                                                          optIdx,
+                                                          'targetRoleName',
+                                                          found.name
+                                                        );
+                                                      }
+                                                    }
+                                                  }}
+                                                  options={[
+                                                    ...(serverRoles.length > 0
+                                                      ? serverRoles.map((r) => ({
+                                                          value: r.id,
+                                                          label: r.name,
+                                                          prefix: '🛡️',
+                                                        }))
+                                                      : [
+                                                          { value: 'role_vip', label: 'VIP (Przykładowa)', prefix: '🛡️' },
+                                                          { value: 'role_gracz', label: 'Gracz / Nowy', prefix: '🛡️' },
+                                                          { value: 'role_notifs', label: 'Powiadomienia', prefix: '🛡️' },
+                                                        ]),
+                                                    { value: 'custom', label: 'Wpisz ręcznie ID / Nazwę...', prefix: '✏️' },
+                                                  ]}
+                                                  placeholder="Wybierz rolę z serwera..."
+                                                  size="sm"
+                                                  triggerClassName="bg-[#121417] border-[#2b3038]"
+                                                />
+                                                <input
+                                                  type="text"
+                                                  value={opt.targetRoleId || ''}
+                                                  onChange={(e) => {
+                                                    const val = e.target.value;
+                                                    handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleId', val);
+                                                    const found = serverRoles.find(
+                                                      (r) => r.id === val || r.name.toLowerCase() === val.toLowerCase()
+                                                    );
+                                                    if (found) {
+                                                      handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleName', found.name);
+                                                    }
+                                                  }}
+                                                  placeholder="Wpisz ID roli lub nazwę..."
+                                                  className="bg-[#121417] border border-[#2b3038] rounded px-2.5 py-1 text-xs text-white outline-none focus:border-emerald-500"
+                                                />
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Opcjonalny własny komunikat dla akcji */}
+                                        {opt.actionType && opt.actionType !== 'none' && (
+                                          <div className="pt-1.5 border-t border-[#23272f]/60">
+                                            <input
+                                              type="text"
+                                              value={opt.customMessage || ''}
+                                              onChange={(e) =>
+                                                handleUpdateSelectOption(cIdx, compIdx, optIdx, 'customMessage', e.target.value)
+                                              }
+                                              placeholder={
+                                                opt.actionType === 'ephemeral_msg'
+                                                  ? 'Wpisz treść prywatnej wiadomości (widocznej tylko dla wybierającego)...'
+                                                  : 'Opcjonalny komunikat zwrotny (np. "Otrzymałeś rolę!", domyślny jeśli pusty)'
+                                              }
+                                              className="w-full bg-[#121417] border border-[#2b3038] rounded px-2.5 py-1 text-[11px] text-zinc-300 outline-none focus:border-emerald-500 placeholder-zinc-500"
+                                            />
+                                          </div>
+                                        )}
                                       </div>
                                     </div>
                                   ))}

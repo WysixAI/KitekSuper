@@ -446,6 +446,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
             <MessageStyleEditor
               containers={containers}
               onChangeContainers={setContainers}
+              serverRoles={server?.roles || []}
             />
           </div>
 

@@ -186,6 +186,7 @@ interface PendingBotAction {
   channelName?: string;
   content?: string;
   embeds?: any[];
+  components?: any[];
   createdAt: number;
 }
 const pendingBotActions: PendingBotAction[] = [];
@@ -198,8 +199,11 @@ app.post('/api/bot/send-embed', async (req, res) => {
     return res.status(400).json({ error: 'Nie podano kanału docelowego.' });
   }
 
-  // Konwersja kontenerów na Discord Embeds
+  // Konwersja kontenerów na Discord Embeds oraz Discord Components (Action Rows)
   const embeds: any[] = [];
+  const actionRows: any[] = [];
+  const interactionConfigs: Record<string, any> = {};
+
   if (Array.isArray(containers)) {
     for (const cont of containers) {
       let description = '';
@@ -207,6 +211,7 @@ app.post('/api/bot/send-embed', async (req, res) => {
       let imageUrl = '';
 
       for (const comp of cont.components || []) {
+        // 1. Sekcja tekstowa i akcesoria
         if (comp.type === 'section') {
           if (comp.sectionContent) {
             description = description ? `${description}\n\n${comp.sectionContent}` : comp.sectionContent;
@@ -216,6 +221,137 @@ app.post('/api/bot/send-embed', async (req, res) => {
               thumbnailUrl = comp.accessory.fileUrl;
             } else if (comp.accessory.type === 'Image') {
               imageUrl = comp.accessory.fileUrl;
+            }
+          }
+        }
+
+        // 2. Text Display (wyświetlanie kodu/tekstu)
+        if (comp.type === 'text_display' && comp.content) {
+          description = description ? `${description}\n\n${comp.content}` : comp.content;
+        }
+
+        // 3. Separator (linia rozdzielająca lub odstęp w embedzie)
+        if (comp.type === 'separator') {
+          const sepText =
+            comp.divider !== false
+              ? '\n───────────────────────────────\n'
+              : comp.spacing === 'Large'
+              ? '\n\n\n'
+              : comp.spacing === 'Medium'
+              ? '\n\n'
+              : '\n';
+          description = description ? `${description}${sepText}` : '';
+        }
+
+        // 4. Media Gallery (grafika)
+        if (comp.type === 'media_gallery' && Array.isArray(comp.mediaUrls) && comp.mediaUrls.length > 0) {
+          if (!imageUrl && comp.mediaUrls[0]) {
+            imageUrl = comp.mediaUrls[0];
+          }
+        }
+
+        // 5. Button Row (Wiersz przycisków Discord - type 1 ActionRow, type 2 Button)
+        if (comp.type === 'button_row' && Array.isArray(comp.buttons) && comp.buttons.length > 0) {
+          if (actionRows.length < 5) {
+            const buttonsList = comp.buttons.slice(0, 5).map((btn: any, bIdx: number) => {
+              const isLink = btn.style === 'link';
+              const styleMap: Record<string, number> = {
+                primary: 1, // Blurple
+                secondary: 2, // Grey
+                success: 3, // Green
+                danger: 4, // Red
+                link: 5, // Link URL
+              };
+              const btnStyle = styleMap[btn.style] || 1;
+
+              const actionType = btn.actionType || 'none';
+              const roleId = btn.targetRoleId || 'none';
+              const cleanId = (btn.id || `btn_${bIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+              const customId = `ktk:act:${actionType}:${roleId}:${cleanId}`;
+
+              const btnPayload: any = {
+                type: 2,
+                style: btnStyle,
+                label: (btn.label || 'Przycisk').slice(0, 80),
+              };
+
+              if (btn.emoji) {
+                btnPayload.emoji = { name: btn.emoji };
+              }
+
+              if (isLink) {
+                btnPayload.url = btn.url || 'https://kitek.pl';
+              } else {
+                btnPayload.custom_id = customId;
+                interactionConfigs[customId] = {
+                  id: btn.id,
+                  label: btn.label,
+                  actionType,
+                  targetRoleId: btn.targetRoleId,
+                  targetRoleName: btn.targetRoleName,
+                  customMessage: btn.customMessage,
+                };
+              }
+
+              return btnPayload;
+            });
+
+            if (buttonsList.length > 0) {
+              actionRows.push({
+                type: 1,
+                components: buttonsList,
+              });
+            }
+          }
+        }
+
+        // 6. Select Menu (Lista rozwijana Discord - type 1 ActionRow, type 3 StringSelect)
+        if (comp.type === 'select_menu' && Array.isArray(comp.options) && comp.options.length > 0) {
+          if (actionRows.length < 5) {
+            const cleanSelId = (comp.id || 'sel').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 25);
+            const selectCustomId = `ktk:sel:${cleanSelId}`;
+
+            const optionsList = comp.options.slice(0, 25).map((opt: any, oIdx: number) => {
+              const actionType = opt.actionType || 'none';
+              const roleId = opt.targetRoleId || 'none';
+              const cleanOptId = (opt.id || opt.value || `opt_${oIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+              const optValue = `ktk:opt:${actionType}:${roleId}:${cleanOptId}`;
+
+              interactionConfigs[optValue] = {
+                id: opt.id,
+                label: opt.label,
+                actionType,
+                targetRoleId: opt.targetRoleId,
+                targetRoleName: opt.targetRoleName,
+                customMessage: opt.customMessage,
+              };
+
+              const optPayload: any = {
+                label: (opt.label || 'Opcja').slice(0, 100),
+                value: optValue,
+                description: opt.description ? opt.description.slice(0, 100) : undefined,
+              };
+
+              if (opt.emoji) {
+                optPayload.emoji = { name: opt.emoji };
+              }
+
+              return optPayload;
+            });
+
+            if (optionsList.length > 0) {
+              actionRows.push({
+                type: 1,
+                components: [
+                  {
+                    type: 3,
+                    custom_id: selectCustomId,
+                    placeholder: (comp.placeholder || 'Wybierz opcję...').slice(0, 150),
+                    disabled: Boolean(comp.disabled),
+                    options: optionsList,
+                  },
+                ],
+              });
             }
           }
         }
@@ -238,6 +374,29 @@ app.post('/api/bot/send-embed', async (req, res) => {
     }
   }
 
+  // Zapisz konfigurację akcji interaktywnych do servers/[guildId].json
+  if (guildId && Object.keys(interactionConfigs).length > 0) {
+    try {
+      const serversDir = path.join(process.cwd(), 'bot', 'servers');
+      if (fs.existsSync(serversDir)) {
+        const guildJsonPath = path.join(serversDir, `${guildId}.json`);
+        let cfg: any = {};
+        if (fs.existsSync(guildJsonPath)) {
+          try {
+            cfg = JSON.parse(fs.readFileSync(guildJsonPath, 'utf8'));
+          } catch {}
+        }
+        cfg.customInteractions = {
+          ...(cfg.customInteractions || {}),
+          ...interactionConfigs,
+        };
+        fs.writeFileSync(guildJsonPath, JSON.stringify(cfg, null, 2), 'utf8');
+      }
+    } catch (err: any) {
+      console.warn('[SEND-EMBED] Nie udało się zapisać akcji interakcji do pliku serwera:', err.message);
+    }
+  }
+
   const botToken = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
 
   // 1. Próba wysłania bezpośrednio przez Discord REST API, jeśli na serwerze jest token i podano ID kanału
@@ -252,14 +411,18 @@ app.post('/api/bot/send-embed', async (req, res) => {
         body: JSON.stringify({
           content: plainText || undefined,
           embeds: embeds.length > 0 ? embeds : undefined,
+          components: actionRows.length > 0 ? actionRows : undefined,
         }),
       });
 
       if (restRes.ok) {
         return res.json({
           success: true,
-          message: `✅ Wiadomość Embed została natychmiast wysłana na kanał #${channelName || channelId}!`,
+          message: `✅ Wiadomość Embed wraz z ${actionRows.length} wierszami komponentów została natychmiast wysłana na kanał #${channelName || channelId}!`,
         });
+      } else {
+        const errText = await restRes.text();
+        console.warn('[SEND-EMBED] REST API zwróciło status błędu:', restRes.status, errText);
       }
     } catch (err: any) {
       console.warn('[SEND-EMBED] REST API próba nieudana, przekazano do kolejki bota:', err.message);
@@ -275,12 +438,13 @@ app.post('/api/bot/send-embed', async (req, res) => {
     channelName,
     content: plainText,
     embeds,
+    components: actionRows,
     createdAt: Date.now(),
   });
 
   return res.json({
     success: true,
-    message: `✅ Wiadomość Embed została przekazana do bota i zostanie natychmiast wysłana na kanał #${channelName || channelId}!`,
+    message: `✅ Wiadomość Embed wraz z ${actionRows.length} wierszami komponentów (przyciskami i menu) została przekazana do bota i zostanie natychmiast wysłana na kanał #${channelName || channelId}!`,
   });
 });
 

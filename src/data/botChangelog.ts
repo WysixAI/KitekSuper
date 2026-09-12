@@ -17,11 +17,62 @@ export interface BotUpdateLogItem {
 
 export const BOT_CHANGELOG_DATA: BotUpdateLogItem[] = [
   {
-    id: 'bot-v1-2-4',
-    version: '1.2.4',
+    id: 'bot-v1-2-5',
+    version: '1.2.5',
     badge: 'NAJNOWSZY',
     badgeColor: 'emerald',
     date: '12.09.2026 (Wydanie bieżące)',
+    timestamp: Date.now(),
+    title: 'Kitek Bot Engine v1.2.5 • Komponenty v2, Przyciski, Menu & Akcje Ról (Role Actions)',
+    summary:
+      'Wprowadzono pełną obsługę wysyłania komponentów Discord v2 (Button Row, Select Menu, Separator) z kreatora embedów oraz wdrożono automatyczne akcje bota: nadawanie, zabieranie i przełączanie ról serwera oraz prywatne wiadomości ephemeral.',
+    affectedFiles: [
+      'bot/cogs/interactions.js',
+      'bot/index.js',
+      'api/index.ts',
+      'src/components/MessageStyleEditor.tsx',
+      'src/components/DiscordPreview.tsx',
+      'src/types/embed.ts',
+    ],
+    changes: [
+      {
+        type: 'feature',
+        text: 'Wysyłka komponentów Discord v2 (Action Rows, Buttons, Select Menus)',
+        details:
+          'Komponenty tworzone w kreatorze MessageStyleEditor (przyciski, listy rozwijane, separatory) są teraz w 100% konwertowane do struktur Discord ActionRow (type 1), Button (type 2) oraz StringSelect (type 3) i wysyłane bezpośrednio przez REST API i bota.',
+      },
+      {
+        type: 'feature',
+        text: 'Akcje ról dla przycisków i menu: Nadawanie, Zabieranie i Przełączanie ról (Role Assignment)',
+        details:
+          'Dodano wsparcie dla akcji: add_role (nadanie rangi), remove_role (odebranie rangi), toggle_role (przełącznik: nadanie lub odebranie jeśli posiada) oraz ephemeral_msg (prywatny komunikat dla klikającego). W edytorze można wybrać rolę z serwera lub podać własne ID roli.',
+      },
+      {
+        type: 'feature',
+        text: 'Nowy moduł bota: bot/cogs/interactions.js',
+        details:
+          'Dedykowany cog do obsługi zdarzeń interactionCreate (zarówno ButtonInteraction, jak i StringSelectMenuInteraction) z bezpieczną walidacją uprawnień bota (ManageRoles) oraz sprawdzaniem hierarchii ról Discorda.',
+      },
+      {
+        type: 'improvement',
+        text: 'Interaktywny podgląd na żywo z symulacją odpowiedzi Ephemeral',
+        details:
+          'W oknie DiscordPreview kliknięcie skonfigurowanego przycisku lub wybór z menu wyświetla wierną symulację odpowiedzi prywatnej Discorda (ephemeral message) wraz z etykietami docelowych ról.',
+      },
+      {
+        type: 'fix',
+        text: 'Poprawna obsługa separatorów i wyświetlacza tekstu (Text Display & Separator)',
+        details:
+          'Separatory oraz bloki Text Display są teraz estetycznie formatowane i dołączane do opisów wysyłanych embedów bez utraty formatowania Markdown.',
+      },
+    ],
+  },
+  {
+    id: 'bot-v1-2-4',
+    version: '1.2.4',
+    badge: 'UPDATE',
+    badgeColor: 'blue',
+    date: '12.09.2026',
     timestamp: 1789257600000,
     title: 'Kitek Bot Engine v1.2.4 • Dynamiczne Role Serwerowe & Kolejka Embedów',
     summary:

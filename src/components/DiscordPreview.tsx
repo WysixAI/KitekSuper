@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { ExternalLink, ChevronDown, EyeOff } from 'lucide-react';
-import { EmbedConfig } from '../types/embed';
+import { ExternalLink, ChevronDown, EyeOff, Eye } from 'lucide-react';
+import { EmbedConfig, DiscordButton, DiscordSelectOption } from '../types/embed';
 
 interface DiscordPreviewProps {
   config: EmbedConfig;
@@ -10,6 +10,7 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
   const [selectedMenuVal, setSelectedMenuVal] = useState<string>('');
   const [isMenuOpen, setIsMenuOpen] = useState<string | null>(null);
   const [revealedSpoilers, setRevealedSpoilers] = useState<Record<string, boolean>>({});
+  const [ephemeralToast, setEphemeralToast] = useState<{ message: string; sub?: string } | null>(null);
 
   // Funkcja podmieniająca zmienne na przykładowe wartości podglądu
   const replaceVars = (text: string) => {
@@ -18,6 +19,52 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
       .replace(/\{user\}/g, '@NowyKotek')
       .replace(/\{server\}/g, 'Kitek Community')
       .replace(/\{memberCount\}/g, '142');
+  };
+
+  const handleButtonClick = (btn: DiscordButton) => {
+    if (btn.style === 'link') {
+      if (btn.url) {
+        window.open(btn.url, '_blank');
+      }
+      return;
+    }
+    let msg = 'Wysłano interakcję przycisku do bota Kitek!';
+    let sub = '';
+    if (btn.actionType === 'add_role') {
+      msg = btn.customMessage || `✅ Nadano rolę "${btn.targetRoleName || btn.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja bota: Nadanie rangi (@${btn.targetRoleName || btn.targetRoleId || 'Rola'})`;
+    } else if (btn.actionType === 'remove_role') {
+      msg = btn.customMessage || `🗑️ Odebrano rolę "${btn.targetRoleName || btn.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja bota: Odebranie rangi (@${btn.targetRoleName || btn.targetRoleId || 'Rola'})`;
+    } else if (btn.actionType === 'toggle_role') {
+      msg = btn.customMessage || `🔄 Przełączono rolę "${btn.targetRoleName || btn.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja bota: Przełączenie rangi (@${btn.targetRoleName || btn.targetRoleId || 'Rola'})`;
+    } else if (btn.actionType === 'ephemeral_msg') {
+      msg = btn.customMessage || '💬 Otrzymałeś prywatną wiadomość od bota Kitek!';
+      sub = 'Prywatna wiadomość widoczna tylko dla Ciebie (ephemeral)';
+    }
+    setEphemeralToast({ message: msg, sub });
+  };
+
+  const handleOptionSelect = (opt: DiscordSelectOption) => {
+    setSelectedMenuVal(opt.label);
+    setIsMenuOpen(null);
+    let msg = `Wybrano opcję: ${opt.label}`;
+    let sub = '';
+    if (opt.actionType === 'add_role') {
+      msg = opt.customMessage || `✅ Nadano rolę "${opt.targetRoleName || opt.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja: Nadanie rangi (@${opt.targetRoleName || opt.targetRoleId || 'Rola'})`;
+    } else if (opt.actionType === 'remove_role') {
+      msg = opt.customMessage || `🗑️ Odebrano rolę "${opt.targetRoleName || opt.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja: Odebranie rangi (@${opt.targetRoleName || opt.targetRoleId || 'Rola'})`;
+    } else if (opt.actionType === 'toggle_role') {
+      msg = opt.customMessage || `🔄 Przełączono rolę "${opt.targetRoleName || opt.targetRoleId || 'Rola'}"!`;
+      sub = `Akcja: Przełączenie rangi (@${opt.targetRoleName || opt.targetRoleId || 'Rola'})`;
+    } else if (opt.actionType === 'ephemeral_msg') {
+      msg = opt.customMessage || '💬 Otrzymałeś prywatną wiadomość od bota Kitek!';
+      sub = 'Prywatna wiadomość widoczna tylko dla Ciebie (ephemeral)';
+    }
+    setEphemeralToast({ message: msg, sub });
   };
 
   const getButtonStyleClasses = (style: string) => {
@@ -258,15 +305,26 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
                                 <button
                                   key={btn.id}
                                   type="button"
-                                  className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 ${getButtonStyleClasses(
+                                  onClick={() => handleButtonClick(btn)}
+                                  className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${getButtonStyleClasses(
                                     btn.style
                                   )}`}
                                 >
                                   {btn.emoji && <span>{btn.emoji}</span>}
                                   <span>{replaceVars(btn.label)}</span>
-                                  {btn.style === 'link' && (
+                                  {btn.style === 'link' ? (
                                     <ExternalLink className="w-3 h-3 text-white/80" />
-                                  )}
+                                  ) : btn.actionType && btn.actionType !== 'none' ? (
+                                    <span className="ml-1 text-[9px] px-1 py-0.2 rounded bg-black/25 text-white/90 font-mono">
+                                      {btn.actionType === 'add_role'
+                                        ? `+${btn.targetRoleName || 'Rola'}`
+                                        : btn.actionType === 'remove_role'
+                                        ? `-${btn.targetRoleName || 'Rola'}`
+                                        : btn.actionType === 'toggle_role'
+                                        ? `🔄${btn.targetRoleName || 'Rola'}`
+                                        : '💬'}
+                                    </span>
+                                  ) : null}
                                 </button>
                               ))}
                             </div>
@@ -284,7 +342,7 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
                                 onClick={() =>
                                   setIsMenuOpen(isOpen ? null : comp.id)
                                 }
-                                className={`w-full bg-[#1e1f22] hover:bg-[#27292d] text-white px-3 py-2 rounded-md flex items-center justify-between border border-[#1e1f22] text-xs font-medium transition-colors ${
+                                className={`w-full bg-[#1e1f22] hover:bg-[#27292d] text-white px-3 py-2 rounded-md flex items-center justify-between border border-[#1e1f22] text-xs font-medium transition-colors cursor-pointer ${
                                   comp.disabled ? 'opacity-50 cursor-not-allowed' : ''
                                 }`}
                               >
@@ -303,16 +361,24 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
                                   {comp.options.map((opt) => (
                                     <div
                                       key={opt.id}
-                                      onClick={() => {
-                                        setSelectedMenuVal(opt.label);
-                                        setIsMenuOpen(null);
-                                      }}
+                                      onClick={() => handleOptionSelect(opt)}
                                       className="px-3 py-2 hover:bg-[#35373c] cursor-pointer text-xs transition-colors flex items-center justify-between"
                                     >
                                       <div>
                                         <div className="font-semibold text-white flex items-center gap-1.5">
                                           {opt.emoji && <span>{opt.emoji}</span>}
                                           <span>{opt.label}</span>
+                                          {opt.actionType && opt.actionType !== 'none' && (
+                                            <span className="text-[9px] px-1 py-0.5 rounded bg-black/30 text-emerald-300 font-mono">
+                                              {opt.actionType === 'add_role'
+                                                ? `+${opt.targetRoleName || 'Rola'}`
+                                                : opt.actionType === 'remove_role'
+                                                ? `-${opt.targetRoleName || 'Rola'}`
+                                                : opt.actionType === 'toggle_role'
+                                                ? `🔄${opt.targetRoleName || 'Rola'}`
+                                                : '💬'}
+                                            </span>
+                                          )}
                                         </div>
                                         {opt.description && (
                                           <div className="text-[10px] text-[#949ba4]">
@@ -355,6 +421,30 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
                   Brak kontenerów do wyświetlenia. Dodaj kontener w edytorze.
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Symulowana odpowiedź Ephemeral Discord (odpowiedź widoczna tylko dla klikającego) */}
+          {ephemeralToast && (
+            <div className="mt-3 p-2.5 rounded bg-[#2b2d31] border-l-4 border-[#5865F2] flex items-start justify-between gap-2 text-xs shadow-lg animate-in fade-in slide-in-from-top-1 duration-200">
+              <div>
+                <div className="flex items-center gap-1 text-[10px] text-[#949ba4] font-medium">
+                  <Eye className="w-3 h-3 text-[#5865F2]" />
+                  <span>Tylko Ty możesz to zobaczyć • Odpowiedź bota Kitek</span>
+                </div>
+                <div className="text-white font-medium mt-0.5">{ephemeralToast.message}</div>
+                {ephemeralToast.sub && (
+                  <div className="text-[11px] text-[#949ba4] mt-0.5">{ephemeralToast.sub}</div>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setEphemeralToast(null)}
+                className="text-zinc-500 hover:text-white text-xs px-1 py-0.5 rounded cursor-pointer"
+                title="Zamknij powiadomienie"
+              >
+                ✕
+              </button>
             </div>
           )}
         </div>

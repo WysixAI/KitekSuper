@@ -245,11 +245,17 @@ async function syncGuildsWithDashboard() {
               }
 
               if (targetChannel && 'send' in targetChannel) {
-                await targetChannel.send({
+                const messagePayload = {
                   content: action.content || undefined,
                   embeds: action.embeds || [],
-                });
-                console.log(`✉️ [EMBED SENDER] Wysłano embed na kanał #${targetChannel.name} (${targetChannel.id})`);
+                };
+                if (Array.isArray(action.components) && action.components.length > 0) {
+                  messagePayload.components = action.components;
+                }
+                await targetChannel.send(messagePayload);
+                console.log(
+                  `✉️ [EMBED SENDER] Wysłano embed (${action.components?.length || 0} wierszy komponentów) na kanał #${targetChannel.name} (${targetChannel.id})`
+                );
               } else {
                 console.warn(`⚠️ [EMBED SENDER] Nie znaleziono kanału docelowego: ${action.channelName || action.channelId}`);
               }
