@@ -20,6 +20,7 @@ import {
   SlashCommandBuilder,
   EmbedBuilder,
   ActivityType,
+  ChannelType,
 } from 'discord.js';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -182,6 +183,20 @@ async function syncGuildsWithDashboard() {
       ownerId: guild.ownerId,
       icon: guild.iconURL({ dynamic: true }),
       joinedAt: guild.joinedAt?.toISOString() || new Date().toISOString(),
+      channels: guild.channels.cache
+        .filter((c) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice)
+        .map((c) => ({
+          id: c.id,
+          name: c.name,
+          type: c.type === ChannelType.GuildText ? 'text' : 'voice',
+        })),
+      roles: guild.roles.cache
+        .filter((r) => r.name !== '@everyone')
+        .map((r) => ({
+          id: r.id,
+          name: r.name,
+          color: r.hexColor,
+        })),
     }));
 
     const response = await fetch(`${DASHBOARD_URL}/api/bot/sync`, {

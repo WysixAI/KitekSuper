@@ -56,6 +56,20 @@ export default function setupGuildTracker(client, context) {
           icon: guild.iconURL({ dynamic: true }),
           ownerId: guild.ownerId,
           joinedAt: new Date().toISOString(),
+          channels: guild.channels.cache
+            .filter((c) => c.type === ChannelType.GuildText || c.type === ChannelType.GuildVoice)
+            .map((c) => ({
+              id: c.id,
+              name: c.name,
+              type: c.type === ChannelType.GuildText ? 'text' : 'voice',
+            })),
+          roles: guild.roles.cache
+            .filter((r) => r.name !== '@everyone')
+            .map((r) => ({
+              id: r.id,
+              name: r.name,
+              color: r.hexColor,
+            })),
         }),
       });
 

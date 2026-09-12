@@ -223,15 +223,38 @@ export default function App() {
         const res = await fetch('/api/bot/status');
         if (res.ok) {
           const data = await res.json();
-          if (Array.isArray(data.joinedGuildIds) && data.joinedGuildIds.length > 0) {
+          if (Array.isArray(data.joinedGuildIds) && Array.isArray(data.syncedGuilds)) {
             const joinedSet = new Set(data.joinedGuildIds);
+            const syncedGuildsMap = new Map<string, any>(data.syncedGuilds.map((g: any) => [g.id, g]));
+
             setServers((prev) => {
               let hasChanged = false;
               const next = prev.map((s) => {
                 const isJoined = joinedSet.has(s.id);
+                const syncedData = syncedGuildsMap.get(s.id);
+                
+                let needsUpdate = false;
+                let updatedServer = { ...s };
+
                 if (s.botJoined !== isJoined) {
+                  updatedServer.botJoined = isJoined;
+                  needsUpdate = true;
+                }
+
+                if (isJoined && syncedData) {
+                  if (syncedData.channels && syncedData.channels.length > 0 && JSON.stringify(s.channels) !== JSON.stringify(syncedData.channels)) {
+                    updatedServer.channels = syncedData.channels;
+                    needsUpdate = true;
+                  }
+                  if (syncedData.roles && syncedData.roles.length > 0 && JSON.stringify(s.roles) !== JSON.stringify(syncedData.roles)) {
+                    updatedServer.roles = syncedData.roles;
+                    needsUpdate = true;
+                  }
+                }
+
+                if (needsUpdate) {
                   hasChanged = true;
-                  return { ...s, botJoined: isJoined };
+                  return updatedServer;
                 }
                 return s;
               });
@@ -350,13 +373,26 @@ export default function App() {
                     fetch('/api/bot/status')
                       .then((r) => r.json())
                       .then((data) => {
-                        if (Array.isArray(data.joinedGuildIds)) {
+                        if (Array.isArray(data.joinedGuildIds) && Array.isArray(data.syncedGuilds)) {
                           const jSet = new Set(data.joinedGuildIds);
+                          const syncedGuildsMap = new Map<string, any>(data.syncedGuilds.map((g: any) => [g.id, g]));
+                          
                           setServers((prev) =>
-                            prev.map((s) => ({
-                              ...s,
-                              botJoined: jSet.has(s.id),
-                            }))
+                            prev.map((s) => {
+                              const isJoined = jSet.has(s.id);
+                              const syncedData = syncedGuildsMap.get(s.id);
+                              let updatedServer = { ...s, botJoined: isJoined };
+
+                              if (isJoined && syncedData) {
+                                if (syncedData.channels && syncedData.channels.length > 0) {
+                                  updatedServer.channels = syncedData.channels;
+                                }
+                                if (syncedData.roles && syncedData.roles.length > 0) {
+                                  updatedServer.roles = syncedData.roles;
+                                }
+                              }
+                              return updatedServer;
+                            })
                           );
                         }
                       })

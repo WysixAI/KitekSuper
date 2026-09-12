@@ -29,6 +29,8 @@ interface SyncedGuild {
   memberCount?: number;
   joinedAt?: string;
   icon?: string | null;
+  channels?: any[];
+  roles?: any[];
 }
 
 let botStatusInfo = {
@@ -140,6 +142,8 @@ app.post('/api/bot/sync', (req, res) => {
         memberCount: g.memberCount,
         icon: g.icon,
         joinedAt: g.joinedAt || new Date().toISOString(),
+        channels: g.channels || [],
+        roles: g.roles || [],
       })),
     };
     console.log(`[BOT SYNC] Zsynchronizowano bota ${botTag || ''} z ${guilds.length} serwerami.`);
@@ -154,7 +158,7 @@ app.post('/api/bot/sync', (req, res) => {
 
 // POST /api/bot/guild-joined - KLUCZOWE: Wywoływane przez zdarzenie client.on('guildCreate')
 app.post('/api/bot/guild-joined', (req, res) => {
-  const { guildId, guildName, memberCount, icon } = req.body;
+  const { guildId, guildName, memberCount, icon, channels, roles } = req.body;
   if (guildId) {
     const sId = String(guildId);
     botJoinedGuildIds.add(sId);
@@ -163,6 +167,8 @@ app.post('/api/bot/guild-joined', (req, res) => {
     if (existingIndex >= 0) {
       botStatusInfo.syncedGuilds[existingIndex].name =
         guildName || botStatusInfo.syncedGuilds[existingIndex].name;
+      botStatusInfo.syncedGuilds[existingIndex].channels = channels || botStatusInfo.syncedGuilds[existingIndex].channels || [];
+      botStatusInfo.syncedGuilds[existingIndex].roles = roles || botStatusInfo.syncedGuilds[existingIndex].roles || [];
     } else {
       botStatusInfo.syncedGuilds.push({
         id: sId,
@@ -170,6 +176,8 @@ app.post('/api/bot/guild-joined', (req, res) => {
         memberCount: memberCount || 1,
         joinedAt: new Date().toISOString(),
         icon,
+        channels: channels || [],
+        roles: roles || [],
       });
     }
 
