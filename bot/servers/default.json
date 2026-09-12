@@ -4,14 +4,14 @@
   "prefix": "!",
   "joinedAt": "2025-01-01T00:00:00.000Z",
   "modules": {
-    "welcomeSystem": true,
-    "autoContent": true,
-    "moderation": true,
-    "logging": true,
-    "economy": true
+    "welcomeSystem": false,
+    "autoContent": false,
+    "moderation": false,
+    "logging": false,
+    "economy": false
   },
   "welcomeSystem": {
-    "enabled": true,
+    "enabled": false,
     "channelId": null,
     "channelName": "👋-powitania",
     "sendDm": false,
@@ -26,7 +26,7 @@
     "autoRole": null
   },
   "autoContent": {
-    "enabled": true,
+    "enabled": false,
     "channelId": null,
     "channelName": "🐱-kocurek-dnia",
     "postIntervalHours": 12,
@@ -34,26 +34,26 @@
     "lastPostAt": null
   },
   "moderation": {
-    "enabled": true,
-    "antiLinks": true,
-    "antiSpam": true,
+    "enabled": false,
+    "antiLinks": false,
+    "antiSpam": false,
     "maxMentions": 5,
     "logChannelId": null,
     "mutedRole": "Wyciszony"
   },
   "logging": {
-    "enabled": true,
+    "enabled": false,
     "channelId": null,
     "events": {
-      "messageDelete": true,
-      "messageUpdate": true,
-      "memberJoin": true,
-      "memberLeave": true,
+      "messageDelete": false,
+      "messageUpdate": false,
+      "memberJoin": false,
+      "memberLeave": false,
       "roleChange": false
     }
   },
   "economy": {
-    "enabled": true,
+    "enabled": false,
     "currencyName": "KitekCoins",
     "currencySymbol": "🪙",
     "dailyAmount": 100

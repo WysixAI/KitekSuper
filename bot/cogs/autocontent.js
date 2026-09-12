@@ -31,14 +31,7 @@ const CAT_MEMES = [
 ];
 
 export function getSlashCommands() {
-  return [
-    new SlashCommandBuilder()
-      .setName('kitek-fakt')
-      .setDescription('Zwraca losową fascynującą ciekawostkę ze świata kotów'),
-    new SlashCommandBuilder()
-      .setName('kitek-mem')
-      .setDescription('Wysyła zabawny koci cytat lub mem ze społeczności Kitek'),
-  ];
+  return [];
 }
 
 export default function setupAutoContent(client, context) {

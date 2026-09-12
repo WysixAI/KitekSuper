@@ -149,10 +149,138 @@ app.post('/api/bot/sync', (req, res) => {
     console.log(`[BOT SYNC] Zsynchronizowano bota ${botTag || ''} z ${guilds.length} serwerami.`);
   }
 
+  // Wczytaj aktualne konfiguracje z bot/servers/ aby odesłać je do bota
+  const serversDir = path.join(process.cwd(), 'bot', 'servers');
+  const configsMap: Record<string, any> = {};
+  if (fs.existsSync(serversDir)) {
+    try {
+      const files = fs.readdirSync(serversDir).filter((f) => f.endsWith('.json'));
+      for (const f of files) {
+        const sId = f.replace('.json', '');
+        try {
+          configsMap[sId] = JSON.parse(fs.readFileSync(path.join(serversDir, f), 'utf8'));
+        } catch {}
+      }
+    } catch {}
+  }
+
+  // Przekaż oczekujące akcje (np. wysyłanie embedów) i wyczyść kolejkę
+  const actionsToSend = [...pendingBotActions];
+  pendingBotActions.length = 0;
+
   res.json({
     success: true,
     guildCount: botJoinedGuildIds.size,
     joinedGuildIds: Array.from(botJoinedGuildIds),
+    configs: configsMap,
+    actions: actionsToSend,
+  });
+});
+
+// Kolejka akcji dla bota (np. wysyłanie embedów przez bota)
+interface PendingBotAction {
+  id: string;
+  type: string;
+  guildId?: string;
+  channelId?: string;
+  channelName?: string;
+  content?: string;
+  embeds?: any[];
+  createdAt: number;
+}
+const pendingBotActions: PendingBotAction[] = [];
+
+// POST /api/bot/send-embed - Wysyła embed na wybrany kanał Discord
+app.post('/api/bot/send-embed', async (req, res) => {
+  const { guildId, channelId, channelName, plainText, containers } = req.body;
+
+  if (!channelId && !channelName) {
+    return res.status(400).json({ error: 'Nie podano kanału docelowego.' });
+  }
+
+  // Konwersja kontenerów na Discord Embeds
+  const embeds: any[] = [];
+  if (Array.isArray(containers)) {
+    for (const cont of containers) {
+      let description = '';
+      let thumbnailUrl = '';
+      let imageUrl = '';
+
+      for (const comp of cont.components || []) {
+        if (comp.type === 'section') {
+          if (comp.sectionContent) {
+            description = description ? `${description}\n\n${comp.sectionContent}` : comp.sectionContent;
+          }
+          if (comp.accessory?.fileUrl) {
+            if (comp.accessory.type === 'Thumbnail') {
+              thumbnailUrl = comp.accessory.fileUrl;
+            } else if (comp.accessory.type === 'Image') {
+              imageUrl = comp.accessory.fileUrl;
+            }
+          }
+        }
+      }
+
+      const hexColor = cont.color ? cont.color.replace('#', '') : '10b981';
+      const colorInt = parseInt(hexColor, 16) || 0x10b981;
+
+      const embedObj: any = {
+        color: colorInt,
+      };
+
+      if (description) embedObj.description = description;
+      if (thumbnailUrl) embedObj.thumbnail = { url: thumbnailUrl };
+      if (imageUrl) embedObj.image = { url: imageUrl };
+
+      if (embedObj.description || embedObj.thumbnail || embedObj.image) {
+        embeds.push(embedObj);
+      }
+    }
+  }
+
+  const botToken = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
+
+  // 1. Próba wysłania bezpośrednio przez Discord REST API, jeśli na serwerze jest token i podano ID kanału
+  if (botToken && channelId && /^\d+$/.test(channelId)) {
+    try {
+      const restRes = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bot ${botToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          content: plainText || undefined,
+          embeds: embeds.length > 0 ? embeds : undefined,
+        }),
+      });
+
+      if (restRes.ok) {
+        return res.json({
+          success: true,
+          message: `✅ Wiadomość Embed została natychmiast wysłana na kanał #${channelName || channelId}!`,
+        });
+      }
+    } catch (err: any) {
+      console.warn('[SEND-EMBED] REST API próba nieudana, przekazano do kolejki bota:', err.message);
+    }
+  }
+
+  // 2. Dodaj do kolejki akcji bota (bot pobiera ją w cyklu sync i natychmiast wysyła)
+  pendingBotActions.push({
+    id: Date.now().toString(),
+    type: 'send_embed',
+    guildId,
+    channelId,
+    channelName,
+    content: plainText,
+    embeds,
+    createdAt: Date.now(),
+  });
+
+  return res.json({
+    success: true,
+    message: `✅ Wiadomość Embed została przekazana do bota i zostanie natychmiast wysłana na kanał #${channelName || channelId}!`,
   });
 });
 
@@ -424,7 +552,7 @@ app.get('/api/bot/servers/:id/config', (req, res) => {
   res.status(404).json({ error: 'Nie znaleziono konfiguracji serwera' });
 });
 
-// POST /api/bot/servers/:id/config - Zapisuje konfigurację konkretnego serwera do servers/[id].json
+// POST /api/bot/servers/:id/config - Zapisuje i scala konfigurację konkretnego serwera do servers/[id].json
 app.post('/api/bot/servers/:id/config', (req, res) => {
   const guildId = req.params.id;
   const config = req.body;
@@ -439,8 +567,47 @@ app.post('/api/bot/servers/:id/config', (req, res) => {
 
   const filePath = path.join(serversDir, `${guildId}.json`);
   try {
-    fs.writeFileSync(filePath, JSON.stringify(config, null, 2), 'utf8');
-    res.json({ success: true, guildId, message: `Zapisano servers/${guildId}.json` });
+    let existingConfig: any = {};
+    if (fs.existsSync(filePath)) {
+      try {
+        existingConfig = JSON.parse(fs.readFileSync(filePath, 'utf8'));
+      } catch {}
+    } else {
+      const defaultPath = path.join(serversDir, 'default.json');
+      if (fs.existsSync(defaultPath)) {
+        try {
+          existingConfig = JSON.parse(fs.readFileSync(defaultPath, 'utf8'));
+        } catch {}
+      }
+    }
+
+    const mergedConfig = {
+      ...existingConfig,
+      ...config,
+      guildId,
+      modules: {
+        ...(existingConfig.modules || {}),
+        ...(config.modules || {}),
+      },
+      welcomeSystem: config.welcomeSystem
+        ? { ...(existingConfig.welcomeSystem || {}), ...config.welcomeSystem }
+        : existingConfig.welcomeSystem,
+      logging: config.logging
+        ? { ...(existingConfig.logging || {}), ...config.logging }
+        : existingConfig.logging,
+      moderation: config.moderation
+        ? { ...(existingConfig.moderation || {}), ...config.moderation }
+        : existingConfig.moderation,
+      economy: config.economy
+        ? { ...(existingConfig.economy || {}), ...config.economy }
+        : existingConfig.economy,
+      autoContent: config.autoContent
+        ? { ...(existingConfig.autoContent || {}), ...config.autoContent }
+        : existingConfig.autoContent,
+    };
+
+    fs.writeFileSync(filePath, JSON.stringify(mergedConfig, null, 2), 'utf8');
+    res.json({ success: true, guildId, message: `Zapisano i zaktualizowano servers/${guildId}.json`, config: mergedConfig });
   } catch (err: any) {
     res.status(500).json({ error: 'Błąd zapisu pliku konfiguracyjnego', details: err.message });
   }

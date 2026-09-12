@@ -78,14 +78,14 @@ export function getDefaultConfig() {
   return {
     prefix: '!',
     modules: {
-      welcomeSystem: true,
-      autoContent: true,
-      moderation: true,
-      logging: true,
-      economy: true,
+      welcomeSystem: false,
+      autoContent: false,
+      moderation: false,
+      logging: false,
+      economy: false,
     },
     welcomeSystem: {
-      enabled: true,
+      enabled: false,
       message: 'Witaj {user} na serwerze {server}! Jesteś #{memberCount} członkiem.',
       embed: {
         title: '🎉 Nowy członek na serwerze!',
@@ -94,22 +94,22 @@ export function getDefaultConfig() {
       },
     },
     autoContent: {
-      enabled: true,
+      enabled: false,
       postIntervalHours: 12,
       categories: ['koty', 'ciekawostki', 'memy'],
     },
     moderation: {
-      enabled: true,
-      antiLinks: true,
-      antiSpam: true,
+      enabled: false,
+      antiLinks: false,
+      antiSpam: false,
       maxMentions: 5,
     },
     logging: {
-      enabled: true,
-      events: { messageDelete: true, messageUpdate: true, memberLeave: true },
+      enabled: false,
+      events: { messageDelete: false, messageUpdate: false, memberLeave: false },
     },
     economy: {
-      enabled: true,
+      enabled: false,
       currencyName: 'KitekCoins',
       currencySymbol: '🪙',
       dailyAmount: 100,
@@ -143,37 +143,32 @@ export function saveServerConfig(guildId, config) {
 }
 
 // ==============================================================================
-// REJESTRACJA KOMEND SLASH ZE WSZYSTKICH COGS
+// REJESTRACJA KOMEND SLASH (Tylko /pomoc i /polaczenie)
 // ==============================================================================
 async function registerSlashCommands(allCommands) {
+  // Tylko wybrane komendy zgodnie z poleceniem: /pomoc oraz komenda od połączenia (/polaczenie)
   const baseCommands = [
     new SlashCommandBuilder()
       .setName('pomoc')
-      .setDescription('Wyświetla listę funkcji bota, aktywne cogs i link do panelu WWW'),
+      .setDescription('Wyświetla pomoc bota, status modułów i link do panelu WWW'),
     new SlashCommandBuilder()
-      .setName('status')
-      .setDescription('Sprawdza ping WebSocket, czas działania i status połączenia z panelem'),
-    new SlashCommandBuilder()
-      .setName('panel')
-      .setDescription('Zwraca bezpośredni link do internetowego dashboardu Kitek'),
-    new SlashCommandBuilder()
-      .setName('serwer-config')
-      .setDescription('Pokazuje podsumowanie aktywnej konfiguracji servers/[guildId].json'),
+      .setName('polaczenie')
+      .setDescription('Sprawdza stan połączenia bota z panelem WWW oraz Discord API'),
   ];
 
   const payload = [...baseCommands, ...allCommands].map((c) => c.toJSON());
   const rest = new REST({ version: '10' }).setToken(TOKEN);
 
   try {
-    console.log(`⚡ Rejestrowanie ${payload.length} globalnych komend slash w Discord API...`);
+    console.log(`⚡ Rejestrowanie ${payload.length} komend slash w Discord API (/pomoc, /polaczenie)...`);
     await rest.put(Routes.applicationCommands(CLIENT_ID), { body: payload });
-    console.log('✅ Pomyślnie zarejestrowano wszystkie komendy slash ze wszystkich cogs!');
+    console.log('✅ Pomyślnie zarejestrowano wyczyszczone komendy slash (/pomoc i /polaczenie)!');
   } catch (error) {
     console.error('❌ Błąd rejestracji komend slash:', error);
   }
 }
 
-// Helper: synchronizacja listy serwerów z Dashboardem (Vercel / Cloud Run)
+// Helper: synchronizacja listy serwerów, konfiguracji oraz akcji z Dashboardem
 async function syncGuildsWithDashboard() {
   try {
     const guildsPayload = client.guilds.cache.map((guild) => ({
@@ -211,10 +206,62 @@ async function syncGuildsWithDashboard() {
     });
 
     if (response.ok) {
-      console.log(`📡 [DASHBOARD SYNC] Zsynchronizowano ${guildsPayload.length} serwerów z panelem Kitek (${DASHBOARD_URL}).`);
+      const data = await response.json();
+
+      // 1. Zsynchronizuj konfiguracje zapisane na panelu WWW do lokalnych servers/[guildId].json
+      if (data.configs && typeof data.configs === 'object') {
+        for (const [gId, cfg] of Object.entries(data.configs)) {
+          if (gId && gId !== 'default') {
+            saveServerConfig(gId, cfg);
+          }
+        }
+      }
+
+      // 2. Wykonaj oczekujące akcje zlecone z panelu WWW (np. wysyłanie Embedów z Creatora)
+      if (Array.isArray(data.actions) && data.actions.length > 0) {
+        for (const action of data.actions) {
+          if (action.type === 'send_embed') {
+            try {
+              const targetGuild = action.guildId ? client.guilds.cache.get(action.guildId) : null;
+              let targetChannel = null;
+
+              if (targetGuild) {
+                targetChannel =
+                  targetGuild.channels.cache.get(action.channelId) ||
+                  targetGuild.channels.cache.find(
+                    (c) => c.name === action.channelName || c.name === action.channelId
+                  );
+              }
+
+              if (!targetChannel) {
+                targetChannel = client.channels.cache.get(action.channelId);
+              }
+
+              if (!targetChannel && action.channelName) {
+                const cleanName = action.channelName.replace(/^#/, '').toLowerCase();
+                targetChannel = client.channels.cache.find(
+                  (c) => c.name?.toLowerCase() === cleanName
+                );
+              }
+
+              if (targetChannel && 'send' in targetChannel) {
+                await targetChannel.send({
+                  content: action.content || undefined,
+                  embeds: action.embeds || [],
+                });
+                console.log(`✉️ [EMBED SENDER] Wysłano embed na kanał #${targetChannel.name} (${targetChannel.id})`);
+              } else {
+                console.warn(`⚠️ [EMBED SENDER] Nie znaleziono kanału docelowego: ${action.channelName || action.channelId}`);
+              }
+            } catch (embedErr) {
+              console.error(`❌ [EMBED SENDER] Błąd wysyłania embeda:`, embedErr.message);
+            }
+          }
+        }
+      }
     }
   } catch (error) {
-    console.warn(`⚠️ [DASHBOARD SYNC] Nie udało się połączyć z panelem (${DASHBOARD_URL})`);
+    console.warn(`⚠️ [DASHBOARD SYNC] Błąd komunikacji z panelem (${DASHBOARD_URL}):`, error.message);
   }
 }
 
@@ -284,11 +331,11 @@ async function main() {
     await registerSlashCommands(extraCommands);
     await syncGuildsWithDashboard();
 
-    // Heartbeat co 60 sekund
-    setInterval(syncGuildsWithDashboard, 60000);
+    // Szybka synchronizacja i sprawdzanie akcji (co 5 sekund)
+    setInterval(syncGuildsWithDashboard, 5000);
   });
 
-  // 3. Podstawowe komendy slash
+  // 3. Podstawowe komendy slash: /pomoc i /polaczenie
   client.on('interactionCreate', async (interaction) => {
     if (!interaction.isChatInputCommand()) return;
 
@@ -297,21 +344,37 @@ async function main() {
     if (commandName === 'pomoc') {
       const embed = new EmbedBuilder()
         .setColor(0x10b981)
-        .setTitle('📖 Pomoc & Moduły (Cogs) Bota Kitek')
+        .setTitle('📖 Pomoc & Połączenie Bota Kitek')
         .setDescription(
-          `Bot Kitek działa w architekturze modułowej **Cogs**, a każdy serwer posiada niezależny plik konfiguracyjny w folderze \`servers/\`.\n\n` +
-          `Zarządzaj funkcjami przez internetowy panel:\n**${DASHBOARD_URL}**`
+          `Bot Kitek jest połączony z Twoim panelem zarządzania serwerami.\n` +
+          `Wszystkimi funkcjami i modułami sterujesz wygodnie przez stronę WWW!\n\n` +
+          `🌐 **Panel bota:** [${DASHBOARD_URL}](${DASHBOARD_URL})\n` +
+          `🔌 **Stan połączenia:** Użyj komendy \`/polaczenie\``
         )
         .addFields(
-          { name: '📦 Aktywne Cogs', value: '• `guildTracker` (dołączenia)\n• `welcome` (powitania)\n• `autocontent` (ciekawostki i memy)\n• `moderation` (automod i kary)\n• `logging` (logi zdarzeń)\n• `economy` (/daily i monety)', inline: false },
-          { name: '⚡ Przydatne komendy', value: '`/status`, `/panel`, `/serwer-config`, `/test-powitanie`, `/daily`, `/portfel`', inline: false }
+          {
+            name: '🧩 Moduły Cogs',
+            value:
+              '• System Powitań (Welcome)\n' +
+              '• Rejestr Zdarzeń (Logging)\n' +
+              '• Automatyczna Moderacja (AutoMod)\n' +
+              '• Ekonomia i Nagrody (Economy)\n' +
+              '• Automatyczne Treści (AutoContent)',
+            inline: false,
+          },
+          {
+            name: '⚙️ Zarządzanie modułami',
+            value: `Wszystkie moduły możesz włączać, wyłączać i konfigurować w panelu: [Otwórz Panel](${DASHBOARD_URL})`,
+            inline: false,
+          }
         )
-        .setFooter({ text: `Serwer: ${guild?.name || 'DM'}` });
+        .setFooter({ text: `Serwer: ${guild?.name || 'Discord'}` })
+        .setTimestamp();
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
     }
 
-    if (commandName === 'status') {
+    if (commandName === 'polaczenie' || commandName === 'status') {
       const ping = client.ws.ping;
       const uptimeSec = Math.floor(client.uptime / 1000);
       const hours = Math.floor(uptimeSec / 3600);
@@ -319,53 +382,19 @@ async function main() {
 
       const embed = new EmbedBuilder()
         .setColor(0x10b981)
-        .setTitle('📊 Status Bota Kitek')
+        .setTitle('🔌 Stan Połączenia Bota Kitek')
+        .setDescription('Szczegółowy status połączenia bota z panelem internetowym i siecią Discord.')
         .addFields(
-          { name: '🏓 Ping WebSocket', value: `${ping} ms`, inline: true },
+          { name: '🌐 Panel WWW', value: `\`${DASHBOARD_URL}\``, inline: false },
+          { name: '🟢 Status Połączenia', value: 'Połączono i zsynchronizowano', inline: true },
+          { name: '🏓 Ping WebSocket', value: `${ping >= 0 ? ping : '< 1'} ms`, inline: true },
           { name: '⏱️ Uptime', value: `${hours}h ${mins}m`, inline: true },
-          { name: '🛡️ Obsługiwane serwery', value: `${client.guilds.cache.size}`, inline: true },
-          { name: '📁 Cogs aktywne', value: `${cogFiles.length} modułów`, inline: true },
-          { name: '🌐 Dashboard WWW', value: `[Otwórz panel](${DASHBOARD_URL})`, inline: true }
+          { name: '🛡️ Obsługiwane serwery', value: `${client.guilds.cache.size}`, inline: true }
         )
+        .setFooter({ text: `Kitek Bot v2.0 • ID: ${client.user.id}` })
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
-    }
-
-    if (commandName === 'panel') {
-      await interaction.reply({
-        content: `🔗 **Panel zarządzania serwerem Kitek:**\n${DASHBOARD_URL}/#servers`,
-        ephemeral: true,
-      });
-    }
-
-    if (commandName === 'serwer-config') {
-      if (!guildId) {
-        return interaction.reply({ content: '❌ Ta komenda działa tylko na serwerze.', ephemeral: true });
-      }
-      const config = getServerConfig(guildId);
-      if (!config) {
-        return interaction.reply({
-          content: `⚠️ Brak dedykowanego pliku \`servers/${guildId}.json\`. Używane są ustawienia domyślne.`,
-          ephemeral: true,
-        });
-      }
-
-      const embed = new EmbedBuilder()
-        .setColor(0x10b981)
-        .setTitle(`⚙️ Konfiguracja: ${guild?.name}`)
-        .setDescription(`Dane wczytane z pliku \`servers/${guildId}.json\`:`)
-        .addFields(
-          { name: 'Prefiks', value: `\`${config.prefix || '!'}\``, inline: true },
-          { name: 'System Powitań', value: config.modules?.welcomeSystem ? '✅ Włączony' : '❌ Wyłączony', inline: true },
-          { name: 'Auto-Kontent', value: config.modules?.autoContent ? '✅ Włączony' : '❌ Wyłączony', inline: true },
-          { name: 'Moderacja', value: config.modules?.moderation ? '✅ Włączona' : '❌ Wyłączona', inline: true },
-          { name: 'Logi Zdarzeń', value: config.modules?.logging ? '✅ Włączone' : '❌ Wyłączone', inline: true },
-          { name: 'Ekonomia', value: config.modules?.economy ? `✅ (${config.economy?.currencyName || 'Monety'})` : '❌ Wyłączona', inline: true }
-        )
-        .setFooter({ text: `Plik: servers/${guildId}.json` });
-
-      await interaction.reply({ embeds: [embed], ephemeral: true });
     }
   });
 

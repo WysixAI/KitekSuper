@@ -16,12 +16,7 @@
 import { EmbedBuilder, SlashCommandBuilder, PermissionFlagsBits } from 'discord.js';
 
 export function getSlashCommands() {
-  return [
-    new SlashCommandBuilder()
-      .setName('test-powitanie')
-      .setDescription('Wysyła testową wiadomość powitalną zgodnie z konfiguracją servers/[guildId].json')
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
-  ];
+  return [];
 }
 
 export default function setupWelcomeSystem(client, context) {

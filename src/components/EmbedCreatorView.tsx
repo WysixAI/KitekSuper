@@ -28,7 +28,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
   const serverRoles = server?.roles ?? [];
 
   const sendChannels: SelectOption[] = serverChannels.map((ch) => ({
-    value: ch.name,
+    value: ch.id || ch.name,
     label: ch.name,
     prefix: '#',
   }));
@@ -38,14 +38,14 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
     { value: '@everyone', label: '@everyone (Wszyscy na serwerze)' },
     { value: '@here', label: '@here (Aktywni na serwerze)' },
     ...serverRoles.map((r) => ({
-      value: r.name,
+      value: r.id ? `<@&${r.id}>` : (r.name.startsWith('@') ? r.name : `@${r.name}`),
       label: `${r.name} (Rola)`,
       prefix: '@',
     })),
   ];
 
   const [selectedChannel, setSelectedChannel] = useState<string>(
-    serverChannels[0]?.name || ''
+    serverChannels[0]?.id || serverChannels[0]?.name || ''
   );
   const [selectedMention, setSelectedMention] = useState<string>('none');
   const [plainTextMessage, setPlainTextMessage] = useState<string>('📢 Witajcie kotki! Mamy dla Was ważne ogłoszenie.');
@@ -53,8 +53,8 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
 
   useEffect(() => {
     if (serverChannels.length > 0) {
-      if (!serverChannels.some((c) => c.name === selectedChannel)) {
-        setSelectedChannel(serverChannels[0].name);
+      if (!serverChannels.some((c) => c.id === selectedChannel || c.name === selectedChannel)) {
+        setSelectedChannel(serverChannels[0].id || serverChannels[0].name);
       }
     } else {
       setSelectedChannel('');
@@ -105,17 +105,49 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!containers || containers.length === 0) {
       showToast('Wiadomość musi zawierać przynajmniej jeden kontener!');
       return;
     }
 
+    if (!selectedChannel) {
+      showToast('Wybierz kanał docelowy do wysłania wiadomości!');
+      return;
+    }
+
+    const targetChannelObj = serverChannels.find(
+      (c) => c.id === selectedChannel || c.name === selectedChannel
+    );
+    const channelId = targetChannelObj?.id || selectedChannel;
+    const channelName = targetChannelObj?.name || selectedChannel;
+
     setIsSending(true);
-    setTimeout(() => {
+    try {
+      const fullText = (selectedMention !== 'none' ? `${selectedMention} ` : '') + plainTextMessage;
+      const res = await fetch('/api/bot/send-embed', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          guildId: server?.id,
+          channelId,
+          channelName,
+          plainText: fullText.trim(),
+          containers,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showToast(data.message || `✅ Pomyślnie wysłano embed na kanał #${channelName}!`);
+      } else {
+        showToast(data.error || 'Nie udało się wysłać wiadomości Embed.');
+      }
+    } catch (err: any) {
+      showToast(`Błąd wysyłania: ${err.message}`);
+    } finally {
       setIsSending(false);
-      showToast(`Pomyślnie wysłano wiadomość na kanał ${selectedChannel}!`);
-    }, 600);
+    }
   };
 
   // Ładowanie gotowych szablonów

@@ -19,61 +19,7 @@ import {
 } from 'discord.js';
 
 export function getSlashCommands() {
-  return [
-    new SlashCommandBuilder()
-      .setName('wyczysc')
-      .setDescription('Usuwa określoną liczbę ostatnich wiadomości na kanale')
-      .addIntegerOption((opt) =>
-        opt
-          .setName('ilosc')
-          .setDescription('Liczba wiadomości do usunięcia (1-100)')
-          .setRequired(true)
-          .setMinValue(1)
-          .setMaxValue(100)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
-
-    new SlashCommandBuilder()
-      .setName('ostrzez')
-      .setDescription('Wysyła oficjalne ostrzeżenie dla użytkownika')
-      .addUserOption((opt) =>
-        opt.setName('uzytkownik').setDescription('Użytkownik do upomnienia').setRequired(true)
-      )
-      .addStringOption((opt) =>
-        opt.setName('powod').setDescription('Powód ostrzeżenia').setRequired(true)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-
-    new SlashCommandBuilder()
-      .setName('wycisz')
-      .setDescription('Tymczasowo wycisza (timeout) użytkownika na serwerze')
-      .addUserOption((opt) =>
-        opt.setName('uzytkownik').setDescription('Użytkownik do wyciszenia').setRequired(true)
-      )
-      .addIntegerOption((opt) =>
-        opt
-          .setName('minuty')
-          .setDescription('Czas wyciszenia w minutach')
-          .setRequired(true)
-          .setMinValue(1)
-          .setMaxValue(1440)
-      )
-      .addStringOption((opt) =>
-        opt.setName('powod').setDescription('Powód wyciszenia').setRequired(false)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.ModerateMembers),
-
-    new SlashCommandBuilder()
-      .setName('wyrzuc')
-      .setDescription('Wyrzuca użytkownika z serwera')
-      .addUserOption((opt) =>
-        opt.setName('uzytkownik').setDescription('Użytkownik do wyrzucenia').setRequired(true)
-      )
-      .addStringOption((opt) =>
-        opt.setName('powod').setDescription('Powód wyrzucenia').setRequired(false)
-      )
-      .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
-  ];
+  return [];
 }
 
 export default function setupModeration(client, context) {

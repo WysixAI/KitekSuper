@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Coins,
   ArrowLeft,
@@ -53,18 +53,6 @@ export interface ShopItem {
   itemActionLabel?: string;
 }
 
-const AVAILABLE_DISCORD_ROLES = [
-  '@VIP',
-  '@Nitro Booster',
-  '@Sponsor',
-  '@Donator',
-  '@Legenda',
-  '@Elita',
-  '@Weteran',
-  '@SuperStar',
-  '@Patron',
-];
-
 const AVAILABLE_ITEM_ACTIONS = [
   { id: 'shield_24h', label: 'Tarcza ochronna przed kradzieżą (24h)', icon: '🛡️', hint: '100% ochrony przed komendą /rob przez 24h' },
   { id: 'shield_48h', label: 'Tarcza ochronna przed kradzieżą (48h)', icon: '🛡️', hint: '100% ochrony przed komendą /rob przez 48h' },
@@ -95,6 +83,17 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
   const [activeTab, setActiveTab] = useState<'settings' | 'modules' | 'shop'>('settings');
   const [notification, setNotification] = useState<string | null>(null);
 
+  // Dynamiczne role pobierane z podłączonego serwera Discord (bez @everyone)
+  const availableRoles: string[] = (server?.roles && server.roles.length > 0)
+    ? server.roles
+        .filter((r) => r.name !== '@everyone')
+        .map((r) => (r.name.startsWith('@') ? r.name : `@${r.name}`))
+    : [];
+
+  const roleSelectOptions = availableRoles.length > 0
+    ? availableRoles.map((r) => ({ value: r, label: r, prefix: '@' }))
+    : [{ value: '', label: 'Brak ról na serwerze (dodaj role na Discordzie)' }];
+
   // =========================================================================
   // 1. GŁÓWNA KONFIGURACJA WALUTY & BANKU
   // =========================================================================
@@ -105,41 +104,37 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
   // Formatowanie kwot: 1000 / 1,000 / 1 000 / 1.000
   const [numberFormat, setNumberFormat] = useState<NumberFormatType>('space');
 
-  // Limity konta i banku
-  const [walletLimitEnabled, setWalletLimitEnabled] = useState(true);
+  // Limity konta i banku - DOMYŚLNIE WYŁĄCZONE NA START
+  const [walletLimitEnabled, setWalletLimitEnabled] = useState(false);
   const [maxWalletAmount, setMaxWalletAmount] = useState(50000);
 
-  const [bankLimitEnabled, setBankLimitEnabled] = useState(true);
+  const [bankLimitEnabled, setBankLimitEnabled] = useState(false);
   const [maxBankAmount, setMaxBankAmount] = useState(100000);
 
   // Oprocentowanie kasy w banku
   const [bankInterestRate, setBankInterestRate] = useState(2.5); // % dziennie
 
   // =========================================================================
-  // 2. MODUŁY ZAROBKOWE
+  // 2. MODUŁY ZAROBKOWE - DOMYŚLNIE WYŁĄCZONE NA START
   // =========================================================================
   // /daily
-  const [dailyEnabled, setDailyEnabled] = useState(true);
+  const [dailyEnabled, setDailyEnabled] = useState(false);
   const [dailyAmount, setDailyAmount] = useState(250);
   const [dailyStreakBonus, setDailyStreakBonus] = useState(30);
 
-  // Rangi z bonusem do /daily (sumujące się)
-  const [dailyBonusRoles, setDailyBonusRoles] = useState<DailyBonusRole[]>([
-    { id: '1', roleName: '@VIP', bonusAmount: 100 },
-    { id: '2', roleName: '@Nitro Booster', bonusAmount: 150 },
-    { id: '3', roleName: '@Sponsor', bonusAmount: 300 },
-  ]);
-  const [newBonusRoleName, setNewBonusRoleName] = useState('@VIP');
+  // Rangi z bonusem do /daily - Czysty start, role dodaje użytkownik z serwera
+  const [dailyBonusRoles, setDailyBonusRoles] = useState<DailyBonusRole[]>([]);
+  const [newBonusRoleName, setNewBonusRoleName] = useState<string>(availableRoles[0] || '');
   const [newBonusAmount, setNewBonusAmount] = useState(150);
 
   // /work
-  const [workEnabled, setWorkEnabled] = useState(true);
+  const [workEnabled, setWorkEnabled] = useState(false);
   const [workMin, setWorkMin] = useState(80);
   const [workMax, setWorkMax] = useState(250);
   const [workCooldown, setWorkCooldown] = useState(30); // minuty
 
   // /crime
-  const [crimeEnabled, setCrimeEnabled] = useState(true);
+  const [crimeEnabled, setCrimeEnabled] = useState(false);
   const [crimeSuccessRate, setCrimeSuccessRate] = useState(45); // %
   const [crimeCooldown, setCrimeCooldown] = useState(45); // minuty
   const [crimeMinReward, setCrimeMinReward] = useState(300);
@@ -147,7 +142,7 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
   const [crimeFailFine, setCrimeFailFine] = useState(250);
 
   // /rob
-  const [robEnabled, setRobEnabled] = useState(true);
+  const [robEnabled, setRobEnabled] = useState(false);
   const [robSuccessRate, setRobSuccessRate] = useState(35); // %
   const [robCooldown, setRobCooldown] = useState(60); // minuty
   const [robMinPercent, setRobMinPercent] = useState(5); // %
@@ -160,37 +155,12 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
   const [shopItems, setShopItems] = useState<ShopItem[]>([
     {
       id: '1',
-      name: 'Rola @VIP',
-      description: 'Dostęp do kanału VIP oraz złoty wyróżniający kolor nicku.',
-      price: 5000,
-      type: 'role',
-      roleName: '@VIP',
-    },
-    {
-      id: '2',
-      name: 'Rola @Sponsor',
-      description: 'Specjalny status na serwerze, priorytet na giveawayach i unikalna ikona.',
-      price: 15000,
-      type: 'role',
-      roleName: '@Sponsor',
-    },
-    {
-      id: '3',
       name: 'Tarcza Ochronna (24h)',
       description: 'Chroni Twój portfel przed kradzieżami (/rob) przez pełne 24 godziny.',
       price: 1200,
       type: 'item',
       itemAction: 'shield_24h',
       itemActionLabel: 'Tarcza ochronna przed kradzieżą (24h)',
-    },
-    {
-      id: '4',
-      name: 'Booster Pracy x2 (24h)',
-      description: 'Podwaja wszystkie wypłaty z komendy /work przez 24 godziny.',
-      price: 2500,
-      type: 'item',
-      itemAction: 'work_2x_24h',
-      itemActionLabel: 'Mnożnik x2 zarobków z /work (24h)',
     },
   ]);
 
@@ -201,15 +171,150 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
   const [newItemType, setNewItemType] = useState<ShopItemType>('role');
 
   // Pola dla typu: 'role'
-  const [selectedRoleForShop, setSelectedRoleForShop] = useState('@VIP');
+  const [selectedRoleForShop, setSelectedRoleForShop] = useState<string>(availableRoles[0] || '');
   const [customRoleInput, setCustomRoleInput] = useState('');
 
   // Pola dla typu: 'item'
   const [selectedItemAction, setSelectedItemAction] = useState('shield_24h');
 
+  // Aktualizuj domyślnie wybrane role gdy lista ról serwera się załaduje
+  useEffect(() => {
+    if (availableRoles.length > 0) {
+      if (!newBonusRoleName || !availableRoles.includes(newBonusRoleName)) {
+        setNewBonusRoleName(availableRoles[0]);
+      }
+      if (!selectedRoleForShop || !availableRoles.includes(selectedRoleForShop)) {
+        setSelectedRoleForShop(availableRoles[0]);
+      }
+    }
+  }, [server?.id, availableRoles.join(',')]);
+
+  // Wczytaj zapisaną konfigurację ekonomii serwera
+  useEffect(() => {
+    if (!server?.id) return;
+    fetch(`/api/bot/servers/${server.id}/config`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.config) {
+          const ec = data.config.economy;
+          if (ec) {
+            if (ec.currencyName) setCurrencyName(ec.currencyName);
+            if (ec.currencySymbol) setCurrencySymbol(ec.currencySymbol);
+            if (ec.startingBalance !== undefined) setStartingBalance(ec.startingBalance);
+            if (ec.numberFormat) setNumberFormat(ec.numberFormat);
+            if (ec.walletLimitEnabled !== undefined) setWalletLimitEnabled(ec.walletLimitEnabled);
+            if (ec.maxWalletAmount !== undefined) setMaxWalletAmount(ec.maxWalletAmount);
+            if (ec.bankLimitEnabled !== undefined) setBankLimitEnabled(ec.bankLimitEnabled);
+            if (ec.maxBankAmount !== undefined) setMaxBankAmount(ec.maxBankAmount);
+            if (ec.bankInterestRate !== undefined) setBankInterestRate(ec.bankInterestRate);
+            if (ec.daily) {
+              if (ec.daily.enabled !== undefined) setDailyEnabled(ec.daily.enabled);
+              if (ec.daily.amount !== undefined) setDailyAmount(ec.daily.amount);
+              if (ec.daily.streakBonus !== undefined) setDailyStreakBonus(ec.daily.streakBonus);
+              if (Array.isArray(ec.daily.bonusRoles)) setDailyBonusRoles(ec.daily.bonusRoles);
+            }
+            if (ec.work) {
+              if (ec.work.enabled !== undefined) setWorkEnabled(ec.work.enabled);
+              if (ec.work.min !== undefined) setWorkMin(ec.work.min);
+              if (ec.work.max !== undefined) setWorkMax(ec.work.max);
+              if (ec.work.cooldown !== undefined) setWorkCooldown(ec.work.cooldown);
+            }
+            if (ec.crime) {
+              if (ec.crime.enabled !== undefined) setCrimeEnabled(ec.crime.enabled);
+              if (ec.crime.successRate !== undefined) setCrimeSuccessRate(ec.crime.successRate);
+              if (ec.crime.cooldown !== undefined) setCrimeCooldown(ec.crime.cooldown);
+              if (ec.crime.minReward !== undefined) setCrimeMinReward(ec.crime.minReward);
+              if (ec.crime.maxReward !== undefined) setCrimeMaxReward(ec.crime.maxReward);
+              if (ec.crime.failFine !== undefined) setCrimeFailFine(ec.crime.failFine);
+            }
+            if (ec.rob) {
+              if (ec.rob.enabled !== undefined) setRobEnabled(ec.rob.enabled);
+              if (ec.rob.successRate !== undefined) setRobSuccessRate(ec.rob.successRate);
+              if (ec.rob.cooldown !== undefined) setRobCooldown(ec.rob.cooldown);
+            }
+            if (Array.isArray(ec.shopItems)) {
+              setShopItems(ec.shopItems);
+            }
+          }
+        }
+      })
+      .catch(() => {});
+  }, [server?.id]);
+
   const showToast = (msg: string) => {
     setNotification(msg);
     setTimeout(() => setNotification(null), 3000);
+  };
+
+  const handleSaveEconomy = async () => {
+    if (!server?.id) {
+      showToast('Wybierz serwer Discord, aby zapisać ustawienia.');
+      return;
+    }
+
+    try {
+      const isAnyActive = dailyEnabled || workEnabled || crimeEnabled || robEnabled;
+      const payload = {
+        modules: {
+          economy: isAnyActive,
+        },
+        economy: {
+          enabled: isAnyActive,
+          currencyName,
+          currencySymbol,
+          startingBalance,
+          numberFormat,
+          walletLimitEnabled,
+          maxWalletAmount,
+          bankLimitEnabled,
+          maxBankAmount,
+          bankInterestRate,
+          daily: {
+            enabled: dailyEnabled,
+            amount: dailyAmount,
+            streakBonus: dailyStreakBonus,
+            bonusRoles: dailyBonusRoles,
+          },
+          work: {
+            enabled: workEnabled,
+            min: workMin,
+            max: workMax,
+            cooldown: workCooldown,
+          },
+          crime: {
+            enabled: crimeEnabled,
+            successRate: crimeSuccessRate,
+            cooldown: crimeCooldown,
+            minReward: crimeMinReward,
+            maxReward: crimeMaxReward,
+            failFine: crimeFailFine,
+          },
+          rob: {
+            enabled: robEnabled,
+            successRate: robSuccessRate,
+            cooldown: robCooldown,
+            minPercent: robMinPercent,
+            maxPercent: robMaxPercent,
+            protectionHours: robProtectionHours,
+          },
+          shopItems,
+        },
+      };
+
+      const res = await fetch(`/api/bot/servers/${server.id}/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        showToast('✅ Pomyślnie zapisano konfigurację ekonomii!');
+      } else {
+        showToast('Błąd podczas zapisywania konfiguracji.');
+      }
+    } catch (e: any) {
+      showToast(`Błąd zapisu: ${e.message}`);
+    }
   };
 
   const formatAmount = (val: number) => formatMoneyValue(val, numberFormat);
@@ -657,7 +762,7 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
                 <div className="pt-2">
                   <button
                     type="button"
-                    onClick={() => showToast('Pomyślnie zapisano ustawienia waluty i banku!')}
+                    onClick={handleSaveEconomy}
                     className="w-full sm:w-auto px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
                   >
                     <Check className="w-4 h-4" />
@@ -746,15 +851,11 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
                   {/* Formularz dodawania rangi do daily */}
                   <div className="grid grid-cols-1 sm:grid-cols-12 gap-2 text-xs">
                     <div className="sm:col-span-5 space-y-1">
-                      <label className="text-[11px] text-zinc-400">Wybierz rangę z serwera:</label>
+                      <label className="text-[11px] text-zinc-400">Wybierz rangę z Twojego serwera:</label>
                       <CustomSelect
                         value={newBonusRoleName}
                         onChange={(val) => setNewBonusRoleName(val)}
-                        options={AVAILABLE_DISCORD_ROLES.map((r) => ({
-                          value: r,
-                          label: r,
-                          prefix: '@',
-                        }))}
+                        options={roleSelectOptions}
                         size="sm"
                         triggerClassName="bg-[#20242a] border-[#303640]"
                       />
@@ -1075,7 +1176,7 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
             <div className="pt-2">
               <button
                 type="button"
-                onClick={() => showToast('Zapisano konfigurację modułów zarobkowych!')}
+                onClick={handleSaveEconomy}
                 className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2"
               >
                 <Check className="w-4 h-4" />
@@ -1169,7 +1270,7 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label className="text-[10px] text-zinc-400 block mb-1">Wybór z ról serwera:</label>
+                        <label className="text-[10px] text-zinc-400 block mb-1">Wybór z ról Twojego serwera:</label>
                         <CustomSelect
                           value={selectedRoleForShop}
                           onChange={(val) => {
@@ -1178,11 +1279,7 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
                               setNewItemName(`Rola ${val}`);
                             }
                           }}
-                          options={AVAILABLE_DISCORD_ROLES.map((role) => ({
-                            value: role,
-                            label: role,
-                            prefix: '@',
-                          }))}
+                          options={roleSelectOptions}
                           size="md"
                           triggerClassName="bg-[#20242a] border-[#303640] focus:border-purple-500"
                         />
@@ -1321,6 +1418,17 @@ export const EconomySystemView = ({ onBackToDashboard, server }: EconomySystemVi
                     </button>
                   </div>
                 ))}
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={handleSaveEconomy}
+                  className="px-5 py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-black font-bold text-xs shadow-md shadow-emerald-500/20 transition-all flex items-center gap-2"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>Zapisz konfigurację sklepu</span>
+                </button>
               </div>
             </div>
           </div>

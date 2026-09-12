@@ -18,26 +18,7 @@ const economyBalances = new Map(); // key: `${guildId}:${userId}` -> balance
 const lastDailyClaim = new Map();  // key: `${guildId}:${userId}` -> timestamp
 
 export function getSlashCommands() {
-  return [
-    new SlashCommandBuilder()
-      .setName('daily')
-      .setDescription('Odbierz codzienną darmową nagrodę monet na serwerze!'),
-    new SlashCommandBuilder()
-      .setName('portfel')
-      .setDescription('Sprawdza Twój aktualny stan portfela i ilość monet na serwerze')
-      .addUserOption((opt) =>
-        opt.setName('uzytkownik').setDescription('Użytkownik do sprawdzenia (opcjonalnie)').setRequired(false)
-      ),
-    new SlashCommandBuilder()
-      .setName('przelej')
-      .setDescription('Przelej monety innemu użytkownikowi na tym serwerze')
-      .addUserOption((opt) =>
-        opt.setName('odbiorca').setDescription('Komu chcesz przelać monety').setRequired(true)
-      )
-      .addIntegerOption((opt) =>
-        opt.setName('kwota').setDescription('Ile monet przelać').setRequired(true).setMinValue(1)
-      ),
-  ];
+  return [];
 }
 
 export default function setupEconomy(client, context) {
