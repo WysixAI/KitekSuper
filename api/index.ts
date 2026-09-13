@@ -187,22 +187,33 @@ interface PendingBotAction {
   content?: string;
   embeds?: any[];
   components?: any[];
+  v2Components?: any[];
+  flags?: number;
   createdAt: number;
 }
 const pendingBotActions: PendingBotAction[] = [];
 
 // POST /api/bot/send-embed - Wysyła embed na wybrany kanał Discord
 app.post('/api/bot/send-embed', async (req, res) => {
-  const { guildId, channelId, channelName, plainText, containers } = req.body;
+  const { guildId, channelId, channelName, plainText, containers, formatMode = 'v2' } = req.body;
 
   if (!channelId && !channelName) {
     return res.status(400).json({ error: 'Nie podano kanału docelowego.' });
   }
 
-  // Konwersja kontenerów na Discord Embeds oraz Discord Components (Action Rows)
+  // 1. Konwersja na standard Discord Components V2 (Container type 17, flags: 32768)
+  // 2. Oraz konwersja na klasyczne Discord Embeds + Action Rows (kompatybilność)
   const embeds: any[] = [];
   const actionRows: any[] = [];
+  const v2TopLevelComponents: any[] = [];
   const interactionConfigs: Record<string, any> = {};
+
+  if (plainText && plainText.trim()) {
+    v2TopLevelComponents.push({
+      type: 10, // Text Display
+      content: plainText.trim(),
+    });
+  }
 
   if (Array.isArray(containers)) {
     for (const cont of containers) {
@@ -210,8 +221,19 @@ app.post('/api/bot/send-embed', async (req, res) => {
       let thumbnailUrl = '';
       let imageUrl = '';
 
+      const hexColor = cont.color ? cont.color.replace('#', '') : '10b981';
+      const colorInt = parseInt(hexColor, 16) || 0x10b981;
+
+      // Obiekt kontenera Discord Components V2 (type 17)
+      const v2Container: any = {
+        type: 17, // Container
+        accent_color: colorInt,
+        spoiler: Boolean(cont.spoiler),
+        components: [],
+      };
+
       for (const comp of cont.components || []) {
-        // 1. Sekcja tekstowa i akcesoria
+        // 1. Sekcja tekstowa i akcesoria (V2 Section type 9)
         if (comp.type === 'section') {
           if (comp.sectionContent) {
             description = description ? `${description}\n\n${comp.sectionContent}` : comp.sectionContent;
@@ -223,14 +245,38 @@ app.post('/api/bot/send-embed', async (req, res) => {
               imageUrl = comp.accessory.fileUrl;
             }
           }
+
+          const secObj: any = {
+            type: 9, // Section
+            components: [
+              {
+                type: 10, // Text Display
+                content: comp.sectionContent || ' ',
+              },
+            ],
+          };
+          if (comp.accessory?.fileUrl) {
+            secObj.accessory = {
+              type: 11, // Thumbnail / Media
+              media: {
+                url: comp.accessory.fileUrl,
+                description: comp.accessory.description || undefined,
+              },
+            };
+          }
+          v2Container.components.push(secObj);
         }
 
-        // 2. Text Display (wyświetlanie kodu/tekstu)
+        // 2. Text Display (wyświetlanie kodu/tekstu - V2 type 10)
         if (comp.type === 'text_display' && comp.content) {
           description = description ? `${description}\n\n${comp.content}` : comp.content;
+          v2Container.components.push({
+            type: 10,
+            content: comp.content,
+          });
         }
 
-        // 3. Separator (linia rozdzielająca lub odstęp w embedzie)
+        // 3. Separator (V2 type 14)
         if (comp.type === 'separator') {
           const sepText =
             comp.divider !== false
@@ -241,124 +287,147 @@ app.post('/api/bot/send-embed', async (req, res) => {
               ? '\n\n'
               : '\n';
           description = description ? `${description}${sepText}` : '';
+
+          v2Container.components.push({
+            type: 14,
+            divider: comp.divider !== false,
+            spacing: comp.spacing === 'Large' ? 2 : 1,
+          });
         }
 
-        // 4. Media Gallery (grafika)
+        // 4. Media Gallery (V2 type 12)
         if (comp.type === 'media_gallery' && Array.isArray(comp.mediaUrls) && comp.mediaUrls.length > 0) {
           if (!imageUrl && comp.mediaUrls[0]) {
             imageUrl = comp.mediaUrls[0];
+          }
+          const validUrls = comp.mediaUrls.filter(Boolean);
+          if (validUrls.length > 0) {
+            v2Container.components.push({
+              type: 12,
+              items: validUrls.map((u: string) => ({
+                media: { url: u },
+              })),
+            });
           }
         }
 
         // 5. Button Row (Wiersz przycisków Discord - type 1 ActionRow, type 2 Button)
         if (comp.type === 'button_row' && Array.isArray(comp.buttons) && comp.buttons.length > 0) {
-          if (actionRows.length < 5) {
-            const buttonsList = comp.buttons.slice(0, 5).map((btn: any, bIdx: number) => {
-              const isLink = btn.style === 'link';
-              const styleMap: Record<string, number> = {
-                primary: 1, // Blurple
-                secondary: 2, // Grey
-                success: 3, // Green
-                danger: 4, // Red
-                link: 5, // Link URL
+          const buttonsList = comp.buttons.slice(0, 5).map((btn: any, bIdx: number) => {
+            const isLink = btn.style === 'link';
+            const styleMap: Record<string, number> = {
+              primary: 1, // Blurple
+              secondary: 2, // Grey
+              success: 3, // Green
+              danger: 4, // Red
+              link: 5, // Link URL
+            };
+            const btnStyle = styleMap[btn.style] || 1;
+
+            const actionType = btn.actionType || 'none';
+            const roleId = btn.targetRoleId || 'none';
+            const cleanId = (btn.id || `btn_${bIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+            const customId = `ktk:act:${actionType}:${roleId}:${cleanId}`;
+
+            const btnPayload: any = {
+              type: 2,
+              style: btnStyle,
+              label: (btn.label || 'Przycisk').slice(0, 80),
+            };
+
+            if (btn.emoji) {
+              btnPayload.emoji = { name: btn.emoji };
+            }
+
+            if (isLink) {
+              btnPayload.url = btn.url || 'https://kitek.pl';
+            } else {
+              btnPayload.custom_id = customId;
+              interactionConfigs[customId] = {
+                id: btn.id,
+                label: btn.label,
+                actionType,
+                targetRoleId: btn.targetRoleId,
+                targetRoleName: btn.targetRoleName,
+                customMessage: btn.customMessage,
               };
-              const btnStyle = styleMap[btn.style] || 1;
+            }
 
-              const actionType = btn.actionType || 'none';
-              const roleId = btn.targetRoleId || 'none';
-              const cleanId = (btn.id || `btn_${bIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
-              const customId = `ktk:act:${actionType}:${roleId}:${cleanId}`;
+            return btnPayload;
+          });
 
-              const btnPayload: any = {
-                type: 2,
-                style: btnStyle,
-                label: (btn.label || 'Przycisk').slice(0, 80),
-              };
-
-              if (btn.emoji) {
-                btnPayload.emoji = { name: btn.emoji };
-              }
-
-              if (isLink) {
-                btnPayload.url = btn.url || 'https://kitek.pl';
-              } else {
-                btnPayload.custom_id = customId;
-                interactionConfigs[customId] = {
-                  id: btn.id,
-                  label: btn.label,
-                  actionType,
-                  targetRoleId: btn.targetRoleId,
-                  targetRoleName: btn.targetRoleName,
-                  customMessage: btn.customMessage,
-                };
-              }
-
-              return btnPayload;
-            });
-
-            if (buttonsList.length > 0) {
+          if (buttonsList.length > 0) {
+            if (actionRows.length < 5) {
               actionRows.push({
                 type: 1,
                 components: buttonsList,
               });
             }
+            v2Container.components.push({
+              type: 1,
+              components: buttonsList,
+            });
           }
         }
 
         // 6. Select Menu (Lista rozwijana Discord - type 1 ActionRow, type 3 StringSelect)
         if (comp.type === 'select_menu' && Array.isArray(comp.options) && comp.options.length > 0) {
-          if (actionRows.length < 5) {
-            const cleanSelId = (comp.id || 'sel').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 25);
-            const selectCustomId = `ktk:sel:${cleanSelId}`;
+          const cleanSelId = (comp.id || 'sel').replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 25);
+          const selectCustomId = `ktk:sel:${cleanSelId}`;
 
-            const optionsList = comp.options.slice(0, 25).map((opt: any, oIdx: number) => {
-              const actionType = opt.actionType || 'none';
-              const roleId = opt.targetRoleId || 'none';
-              const cleanOptId = (opt.id || opt.value || `opt_${oIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
-              const optValue = `ktk:opt:${actionType}:${roleId}:${cleanOptId}`;
+          const optionsList = comp.options.slice(0, 25).map((opt: any, oIdx: number) => {
+            const actionType = opt.actionType || 'none';
+            const roleId = opt.targetRoleId || 'none';
+            const cleanOptId = (opt.id || opt.value || `opt_${oIdx}`).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 20);
+            const optValue = `ktk:opt:${actionType}:${roleId}:${cleanOptId}`;
 
-              interactionConfigs[optValue] = {
-                id: opt.id,
-                label: opt.label,
-                actionType,
-                targetRoleId: opt.targetRoleId,
-                targetRoleName: opt.targetRoleName,
-                customMessage: opt.customMessage,
-              };
+            interactionConfigs[optValue] = {
+              id: opt.id,
+              label: opt.label,
+              actionType,
+              targetRoleId: opt.targetRoleId,
+              targetRoleName: opt.targetRoleName,
+              customMessage: opt.customMessage,
+            };
 
-              const optPayload: any = {
-                label: (opt.label || 'Opcja').slice(0, 100),
-                value: optValue,
-                description: opt.description ? opt.description.slice(0, 100) : undefined,
-              };
+            const optPayload: any = {
+              label: (opt.label || 'Opcja').slice(0, 100),
+              value: optValue,
+              description: opt.description ? opt.description.slice(0, 100) : undefined,
+            };
 
-              if (opt.emoji) {
-                optPayload.emoji = { name: opt.emoji };
-              }
-
-              return optPayload;
-            });
-
-            if (optionsList.length > 0) {
-              actionRows.push({
-                type: 1,
-                components: [
-                  {
-                    type: 3,
-                    custom_id: selectCustomId,
-                    placeholder: (comp.placeholder || 'Wybierz opcję...').slice(0, 150),
-                    disabled: Boolean(comp.disabled),
-                    options: optionsList,
-                  },
-                ],
-              });
+            if (opt.emoji) {
+              optPayload.emoji = { name: opt.emoji };
             }
+
+            return optPayload;
+          });
+
+          if (optionsList.length > 0) {
+            const selectRow = {
+              type: 1,
+              components: [
+                {
+                  type: 3,
+                  custom_id: selectCustomId,
+                  placeholder: (comp.placeholder || 'Wybierz opcję...').slice(0, 150),
+                  disabled: Boolean(comp.disabled),
+                  options: optionsList,
+                },
+              ],
+            };
+            if (actionRows.length < 5) {
+              actionRows.push(selectRow);
+            }
+            v2Container.components.push(selectRow);
           }
         }
       }
 
-      const hexColor = cont.color ? cont.color.replace('#', '') : '10b981';
-      const colorInt = parseInt(hexColor, 16) || 0x10b981;
+      if (v2Container.components.length === 0) {
+        v2Container.components.push({ type: 10, content: ' ' });
+      }
+      v2TopLevelComponents.push(v2Container);
 
       const embedObj: any = {
         color: colorInt,
@@ -399,37 +468,79 @@ app.post('/api/bot/send-embed', async (req, res) => {
 
   const botToken = process.env.DISCORD_BOT_TOKEN || process.env.DISCORD_TOKEN;
 
-  // 1. Próba wysłania bezpośrednio przez Discord REST API, jeśli na serwerze jest token i podano ID kanału
+  // 1. Próba wysłania bezpośrednio przez Discord REST API
   if (botToken && channelId && /^\d+$/.test(channelId)) {
-    try {
-      const restRes = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bot ${botToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          content: plainText || undefined,
-          embeds: embeds.length > 0 ? embeds : undefined,
-          components: actionRows.length > 0 ? actionRows : undefined,
-        }),
-      });
+    let sendSuccess = false;
+    let sendMode = 'legacy';
 
-      if (restRes.ok) {
-        return res.json({
-          success: true,
-          message: `✅ Wiadomość Embed wraz z ${actionRows.length} wierszami komponentów została natychmiast wysłana na kanał #${channelName || channelId}!`,
+    // Próba wysłania Components V2 (flags: 32768, kontenery type 17)
+    if (formatMode !== 'legacy' && v2TopLevelComponents.length > 0) {
+      try {
+        const v2Res = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            flags: 32768,
+            components: v2TopLevelComponents,
+          }),
         });
-      } else {
-        const errText = await restRes.text();
-        console.warn('[SEND-EMBED] REST API zwróciło status błędu:', restRes.status, errText);
+
+        if (v2Res.ok) {
+          sendSuccess = true;
+          sendMode = 'v2';
+        } else {
+          const errText = await v2Res.text();
+          console.warn('[SEND-EMBED] REST API V2 zwróciło status błędu:', v2Res.status, errText);
+        }
+      } catch (err: any) {
+        console.warn('[SEND-EMBED] REST API V2 próba nieudana:', err.message);
       }
-    } catch (err: any) {
-      console.warn('[SEND-EMBED] REST API próba nieudana, przekazano do kolejki bota:', err.message);
+    }
+
+    // Fallback: Klasyczny embed + Action Rows
+    if (!sendSuccess) {
+      try {
+        const restRes = await fetch(`https://discord.com/api/v10/channels/${channelId}/messages`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bot ${botToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: plainText || undefined,
+            embeds: embeds.length > 0 ? embeds : undefined,
+            components: actionRows.length > 0 ? actionRows : undefined,
+          }),
+        });
+
+        if (restRes.ok) {
+          sendSuccess = true;
+          sendMode = 'legacy';
+        } else {
+          const errText = await restRes.text();
+          console.warn('[SEND-EMBED] REST API legacy zwróciło status błędu:', restRes.status, errText);
+        }
+      } catch (err: any) {
+        console.warn('[SEND-EMBED] REST API legacy próba nieudana:', err.message);
+      }
+    }
+
+    if (sendSuccess) {
+      return res.json({
+        success: true,
+        mode: sendMode,
+        message:
+          sendMode === 'v2'
+            ? `🚀 Wiadomość Discord Components v2 (nowy standard z kontenerami type 17, przyciskami i akcjami ról) została natychmiast wysłana na kanał #${channelName || channelId}!`
+            : `✅ Wiadomość Embed wraz z ${actionRows.length} wierszami komponentów (przyciskami i menu akcji ról) została natychmiast wysłana na kanał #${channelName || channelId}!`,
+      });
     }
   }
 
-  // 2. Dodaj do kolejki akcji bota (bot pobiera ją w cyklu sync i natychmiast wysyła)
+  // 2. Dodaj do kolejki akcji bota (bot pobiera w cyklu sync i wysyła)
   pendingBotActions.push({
     id: Date.now().toString(),
     type: 'send_embed',
@@ -439,12 +550,15 @@ app.post('/api/bot/send-embed', async (req, res) => {
     content: plainText,
     embeds,
     components: actionRows,
+    v2Components: v2TopLevelComponents,
+    flags: 32768,
     createdAt: Date.now(),
   });
 
   return res.json({
     success: true,
-    message: `✅ Wiadomość Embed wraz z ${actionRows.length} wierszami komponentów (przyciskami i menu) została przekazana do bota i zostanie natychmiast wysłana na kanał #${channelName || channelId}!`,
+    mode: formatMode === 'v2' ? 'v2' : 'legacy',
+    message: `✅ Wiadomość Discord Components v2 wraz z kontenerami i akcjami ról została przekazana do bota i zostanie natychmiast wysłana na kanał #${channelName || channelId}!`,
   });
 });
 

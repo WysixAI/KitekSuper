@@ -245,17 +245,38 @@ async function syncGuildsWithDashboard() {
               }
 
               if (targetChannel && 'send' in targetChannel) {
-                const messagePayload = {
-                  content: action.content || undefined,
-                  embeds: action.embeds || [],
-                };
-                if (Array.isArray(action.components) && action.components.length > 0) {
-                  messagePayload.components = action.components;
+                let sentV2 = false;
+
+                // 1. Próba wysłania w nowym standardzie Discord Components V2 (kontenery type 17, flags 32768)
+                if (Array.isArray(action.v2Components) && action.v2Components.length > 0) {
+                  try {
+                    await targetChannel.send({
+                      flags: 32768,
+                      components: action.v2Components,
+                    });
+                    sentV2 = true;
+                    console.log(
+                      `🚀 [COMPONENTS V2] Wysłano nową strukturę Discord Components v2 (kontenery type 17) na kanał #${targetChannel.name} (${targetChannel.id})`
+                    );
+                  } catch (v2Err) {
+                    console.warn(`⚠️ [COMPONENTS V2] Błąd wysyłania V2 (${v2Err.message}), wysyłam w trybie kompatybilności...`);
+                  }
                 }
-                await targetChannel.send(messagePayload);
-                console.log(
-                  `✉️ [EMBED SENDER] Wysłano embed (${action.components?.length || 0} wierszy komponentów) na kanał #${targetChannel.name} (${targetChannel.id})`
-                );
+
+                // 2. Tryb kompatybilności klasycznej (embeds + action rows)
+                if (!sentV2) {
+                  const messagePayload = {
+                    content: action.content || undefined,
+                    embeds: action.embeds || [],
+                  };
+                  if (Array.isArray(action.components) && action.components.length > 0) {
+                    messagePayload.components = action.components;
+                  }
+                  await targetChannel.send(messagePayload);
+                  console.log(
+                    `✉️ [EMBED SENDER] Wysłano embed (${action.components?.length || 0} wierszy komponentów) na kanał #${targetChannel.name} (${targetChannel.id})`
+                  );
+                }
               } else {
                 console.warn(`⚠️ [EMBED SENDER] Nie znaleziono kanału docelowego: ${action.channelName || action.channelId}`);
               }

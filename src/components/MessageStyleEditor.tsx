@@ -949,15 +949,20 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                               </label>
                                               <CustomSelect
                                                 value={btn.actionType || 'none'}
-                                                onChange={(val) =>
-                                                  handleUpdateButton(
-                                                    cIdx,
-                                                    compIdx,
-                                                    btnIdx,
-                                                    'actionType',
-                                                    val as ComponentActionType
-                                                  )
-                                                }
+                                                onChange={(val) => {
+                                                  const newAct = val as ComponentActionType;
+                                                  handleUpdateButton(cIdx, compIdx, btnIdx, 'actionType', newAct);
+                                                  if (['add_role', 'remove_role', 'toggle_role'].includes(newAct)) {
+                                                    if (btn.targetRoleName) {
+                                                      handleUpdateButton(cIdx, compIdx, btnIdx, 'label', btn.targetRoleName);
+                                                    } else if (serverRoles.length > 0) {
+                                                      const firstRole = serverRoles[0];
+                                                      handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleId', firstRole.id);
+                                                      handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleName', firstRole.name);
+                                                      handleUpdateButton(cIdx, compIdx, btnIdx, 'label', firstRole.name);
+                                                    }
+                                                  }
+                                                }}
                                                 options={[
                                                   { value: 'none', label: 'Brak akcji (Zwykły klik)', prefix: '⚪' },
                                                   { value: 'add_role', label: 'Nadaj rolę (Add Role)', prefix: '➕' },
@@ -1009,6 +1014,13 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                             'targetRoleName',
                                                             found.name
                                                           );
+                                                          handleUpdateButton(
+                                                            cIdx,
+                                                            compIdx,
+                                                            btnIdx,
+                                                            'label',
+                                                            found.name
+                                                          );
                                                         }
                                                       }
                                                     }}
@@ -1041,6 +1053,10 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                       );
                                                       if (found) {
                                                         handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleName', found.name);
+                                                        handleUpdateButton(cIdx, compIdx, btnIdx, 'label', found.name);
+                                                      } else if (val.trim()) {
+                                                        handleUpdateButton(cIdx, compIdx, btnIdx, 'targetRoleName', val.trim());
+                                                        handleUpdateButton(cIdx, compIdx, btnIdx, 'label', val.trim());
                                                       }
                                                     }}
                                                     placeholder="Wpisz ID roli lub nazwę..."
@@ -1230,15 +1246,20 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                             </label>
                                             <CustomSelect
                                               value={opt.actionType || 'none'}
-                                              onChange={(val) =>
-                                                handleUpdateSelectOption(
-                                                  cIdx,
-                                                  compIdx,
-                                                  optIdx,
-                                                  'actionType',
-                                                  val as ComponentActionType
-                                                )
-                                              }
+                                              onChange={(val) => {
+                                                const newAct = val as ComponentActionType;
+                                                handleUpdateSelectOption(cIdx, compIdx, optIdx, 'actionType', newAct);
+                                                if (['add_role', 'remove_role', 'toggle_role'].includes(newAct)) {
+                                                  if (opt.targetRoleName) {
+                                                    handleUpdateSelectOption(cIdx, compIdx, optIdx, 'label', opt.targetRoleName);
+                                                  } else if (serverRoles.length > 0) {
+                                                    const firstRole = serverRoles[0];
+                                                    handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleId', firstRole.id);
+                                                    handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleName', firstRole.name);
+                                                    handleUpdateSelectOption(cIdx, compIdx, optIdx, 'label', firstRole.name);
+                                                  }
+                                                }
+                                              }}
                                               options={[
                                                 { value: 'none', label: 'Brak akcji (Zwykły wybór)', prefix: '⚪' },
                                                 { value: 'add_role', label: 'Nadaj rolę (Add Role)', prefix: '➕' },
@@ -1290,6 +1311,13 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                           'targetRoleName',
                                                           found.name
                                                         );
+                                                        handleUpdateSelectOption(
+                                                          cIdx,
+                                                          compIdx,
+                                                          optIdx,
+                                                          'label',
+                                                          found.name
+                                                        );
                                                       }
                                                     }
                                                   }}
@@ -1322,6 +1350,10 @@ export const MessageStyleEditor: React.FC<MessageStyleEditorProps> = ({
                                                     );
                                                     if (found) {
                                                       handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleName', found.name);
+                                                      handleUpdateSelectOption(cIdx, compIdx, optIdx, 'label', found.name);
+                                                    } else if (val.trim()) {
+                                                      handleUpdateSelectOption(cIdx, compIdx, optIdx, 'targetRoleName', val.trim());
+                                                      handleUpdateSelectOption(cIdx, compIdx, optIdx, 'label', val.trim());
                                                     }
                                                   }}
                                                   placeholder="Wpisz ID roli lub nazwę..."

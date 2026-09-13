@@ -50,6 +50,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
   const [selectedMention, setSelectedMention] = useState<string>('none');
   const [plainTextMessage, setPlainTextMessage] = useState<string>('📢 Witajcie kotki! Mamy dla Was ważne ogłoszenie.');
   const [isSending, setIsSending] = useState<boolean>(false);
+  const [formatMode, setFormatMode] = useState<'v2' | 'legacy'>('v2');
 
   useEffect(() => {
     if (serverChannels.length > 0) {
@@ -134,6 +135,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
           channelName,
           plainText: fullText.trim(),
           containers,
+          formatMode,
         }),
       });
 
@@ -423,6 +425,45 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
               placeholder="Np. Hej @everyone! Zapoznajcie się z ogłoszeniem poniżej..."
               className="w-full bg-[#16181b] border border-[#2e333b] rounded-lg px-3 py-2 text-xs text-white placeholder-zinc-500 outline-none focus:border-emerald-500 transition-colors"
             />
+          </div>
+
+          {/* Wybór formatu: Discord Components v2 vs Klasyczny Embed */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-[#2b2f37]">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-zinc-400 font-medium">Standard wysyłania:</span>
+              <div className="inline-flex rounded-lg bg-[#15171a] p-1 border border-[#2e333b]">
+                <button
+                  type="button"
+                  onClick={() => setFormatMode('v2')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    formatMode === 'v2'
+                      ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/20'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <span>🚀 Discord Components v2 (Kontenery type 17)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormatMode('legacy')}
+                  className={`px-3 py-1.5 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all ${
+                    formatMode === 'legacy'
+                      ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                      : 'text-zinc-400 hover:text-white'
+                  }`}
+                >
+                  <span>📜 Embed klasyczny</span>
+                </button>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                {formatMode === 'v2'
+                  ? 'Format: Components V2 (flags: 32768) + Akcje ról'
+                  : 'Format: Discord Embeds (type 1 Rows)'}
+              </span>
+            </div>
           </div>
         </div>
 
