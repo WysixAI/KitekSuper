@@ -271,7 +271,7 @@ export const EmbedCreatorView: React.FC<EmbedCreatorViewProps> = ({ onBackToDash
 
   // Konfiguracja dla DiscordPreview na żywo
   const previewConfig: EmbedConfig = {
-    mode: 'embed_v2',
+    mode: formatMode === 'v2' ? 'embed_v2' : 'embed_v1',
     plainText: (selectedMention !== 'none' ? `${selectedMention} ` : '') + plainTextMessage,
     title: '',
     description: '',

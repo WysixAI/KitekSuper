@@ -128,69 +128,189 @@ export const DiscordPreview = ({ config }: DiscordPreviewProps) => {
                 </div>
               )}
 
-              <div
-                className="rounded-lg bg-[#2b2d31] border-l-4 p-4 text-xs max-w-xl shadow-sm"
-                style={{ borderLeftColor: config.color || '#10b981' }}
-              >
-                {config.authorName && (
-                  <div className="flex items-center gap-2 mb-1.5 text-white font-semibold text-xs">
-                    {config.authorIcon && (
-                      <img
-                        src={config.authorIcon}
-                        alt="author"
-                        referrerPolicy="no-referrer"
-                        className="w-5 h-5 rounded-full object-cover"
-                      />
-                    )}
-                    <span>{replaceVars(config.authorName)}</span>
-                  </div>
-                )}
+              {/* Parsowanie kontenerów na klasyczne embedy */}
+              {config.containers && config.containers.length > 0 ? (
+                config.containers.map((cont, cIdx) => {
+                  let description = '';
+                  let thumbnailUrl = '';
+                  let imageUrl = '';
 
-                {config.title && (
-                  <div className="font-bold text-white text-sm mb-1.5">
-                    {replaceVars(config.title)}
-                  </div>
-                )}
+                  cont.components.forEach((comp) => {
+                    if (comp.type === 'section') {
+                      if (comp.sectionContent) {
+                        description = description ? `${description}\n\n${comp.sectionContent}` : comp.sectionContent;
+                      }
+                      if (comp.accessory?.fileUrl) {
+                        if (comp.accessory.type === 'Thumbnail') thumbnailUrl = comp.accessory.fileUrl;
+                        else if (comp.accessory.type === 'Image') imageUrl = comp.accessory.fileUrl;
+                      }
+                    }
+                    if (comp.type === 'text_display' && comp.content) {
+                      description = description ? `${description}\n\n${comp.content}` : comp.content;
+                    }
+                    if (comp.type === 'separator') {
+                      const sepText =
+                        comp.divider !== false
+                          ? '\n───────────────────────────────\n'
+                          : comp.spacing === 'Large'
+                          ? '\n\n\n'
+                          : comp.spacing === 'Medium'
+                          ? '\n\n'
+                          : '\n';
+                      description = description ? `${description}${sepText}` : '';
+                    }
+                    if (comp.type === 'media_gallery' && comp.mediaUrls && comp.mediaUrls[0]) {
+                      if (!imageUrl) imageUrl = comp.mediaUrls[0];
+                    }
+                  });
 
-                {config.description && (
-                  <div className="text-[#dbdee1] whitespace-pre-wrap break-words mb-3 leading-relaxed">
-                    {replaceVars(config.description)}
-                  </div>
-                )}
+                  if (!description && !thumbnailUrl && !imageUrl) return null;
 
-                {config.fields && config.fields.length > 0 && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-3">
-                    {config.fields.map((field, idx) => (
-                      <div
-                        key={idx}
-                        className={field.inline ? 'col-span-1' : 'col-span-full'}
-                      >
-                        <div className="font-semibold text-white text-xs mb-0.5">
-                          {replaceVars(field.name)}
+                  return (
+                    <div
+                      key={`legacy_embed_${cIdx}`}
+                      className="rounded-lg bg-[#2b2d31] border-l-4 p-4 text-xs max-w-xl shadow-sm relative"
+                      style={{ borderLeftColor: cont.color || '#10b981' }}
+                    >
+                      <div className="flex justify-between gap-4">
+                        <div className="flex-1 min-w-0">
+                          {description && (
+                            <div className="text-[#dbdee1] whitespace-pre-wrap break-words mb-3 leading-relaxed">
+                              {replaceVars(description)}
+                            </div>
+                          )}
+                          {imageUrl && (
+                            <div className="mt-3 rounded-lg overflow-hidden max-h-56">
+                              <img
+                                src={imageUrl}
+                                alt="embed image"
+                                referrerPolicy="no-referrer"
+                                className="w-full object-cover"
+                              />
+                            </div>
+                          )}
                         </div>
-                        <div className="text-[#dbdee1] whitespace-pre-wrap break-words">
-                          {replaceVars(field.value)}
-                        </div>
+                        {thumbnailUrl && (
+                          <div className="shrink-0 w-20 h-20">
+                            <img
+                              src={thumbnailUrl}
+                              alt="thumbnail"
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-cover rounded-md"
+                            />
+                          </div>
+                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-4 rounded-lg bg-[#2b2d31] text-xs text-zinc-400 italic">
+                  Brak kontenerów do wyświetlenia w trybie klasycznym.
+                </div>
+              )}
 
-                {config.imageUrl && (
-                  <div className="mt-3 rounded-lg overflow-hidden max-h-56">
-                    <img
-                      src={config.imageUrl}
-                      alt="embed image"
-                      referrerPolicy="no-referrer"
-                      className="w-full object-cover"
-                    />
-                  </div>
-                )}
+              {/* Globalne przyciski na dole (poza embedem) */}
+              <div className="space-y-2 mt-3 max-w-xl">
+                {config.containers?.map((cont) =>
+                  cont.components.map((comp) => {
+                    // Przyciski
+                    if (comp.type === 'button_row' && comp.buttons && comp.buttons.length > 0) {
+                      return (
+                        <div key={comp.id} className="flex flex-wrap items-center gap-2 pt-1">
+                          {comp.buttons.map((btn) => (
+                            <button
+                              key={btn.id}
+                              type="button"
+                              onClick={() => handleButtonClick(btn)}
+                              className={`px-3 py-1.5 rounded text-xs font-semibold flex items-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer ${getButtonStyleClasses(
+                                btn.style
+                              )}`}
+                            >
+                              {btn.emoji && <span>{btn.emoji}</span>}
+                              <span>{replaceVars(btn.label)}</span>
+                              {btn.style === 'link' ? (
+                                <ExternalLink className="w-3 h-3 text-white/80" />
+                              ) : btn.actionType && btn.actionType !== 'none' ? (
+                                <span className="ml-1 text-[9px] px-1 py-0.2 rounded bg-black/25 text-white/90 font-mono">
+                                  {btn.actionType === 'add_role'
+                                    ? `+${btn.targetRoleName || 'Rola'}`
+                                    : btn.actionType === 'remove_role'
+                                    ? `-${btn.targetRoleName || 'Rola'}`
+                                    : btn.actionType === 'toggle_role'
+                                    ? `🔄${btn.targetRoleName || 'Rola'}`
+                                    : '💬'}
+                                </span>
+                              ) : null}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    }
 
-                {config.footerText && (
-                  <div className="mt-3 pt-2 border-t border-[#35373c] flex items-center gap-2 text-[11px] text-[#949ba4]">
-                    <span>{replaceVars(config.footerText)}</span>
-                  </div>
+                    // Select Menus
+                    if (comp.type === 'select_menu') {
+                      const isOpen = isMenuOpen === comp.id;
+                      return (
+                        <div key={comp.id} className="relative w-full pt-1">
+                          <button
+                            type="button"
+                            disabled={comp.disabled}
+                            onClick={() => setIsMenuOpen(isOpen ? null : comp.id)}
+                            className={`w-full bg-[#1e1f22] hover:bg-[#27292d] text-white px-3 py-2 rounded-md flex items-center justify-between border border-[#1e1f22] text-xs font-medium transition-colors cursor-pointer ${
+                              comp.disabled ? 'opacity-50 cursor-not-allowed' : ''
+                            }`}
+                          >
+                            <span className="truncate">
+                              {selectedMenuVal || comp.placeholder || 'Wybierz opcję...'}
+                            </span>
+                            <ChevronDown
+                              className={`w-3.5 h-3.5 text-[#949ba4] transition-transform ${
+                                isOpen ? 'rotate-180' : ''
+                              }`}
+                            />
+                          </button>
+
+                          {isOpen && comp.options && (
+                            <div className="absolute left-0 right-0 top-full mt-1 bg-[#2b2d31] border border-[#1e1f22] rounded-md shadow-2xl z-30 py-1 max-h-48 overflow-y-auto">
+                              {comp.options.map((opt) => (
+                                <div
+                                  key={opt.id}
+                                  onClick={() => handleOptionSelect(opt)}
+                                  className="px-3 py-2 hover:bg-[#35373c] cursor-pointer text-xs transition-colors flex items-center justify-between"
+                                >
+                                  <div>
+                                    <div className="font-semibold text-white flex items-center gap-1.5">
+                                      {opt.emoji && <span>{opt.emoji}</span>}
+                                      <span>{opt.label}</span>
+                                      {opt.actionType && opt.actionType !== 'none' && (
+                                        <span className="text-[9px] px-1 py-0.5 rounded bg-black/30 text-emerald-300 font-mono">
+                                          {opt.actionType === 'add_role'
+                                            ? `+${opt.targetRoleName || 'Rola'}`
+                                            : opt.actionType === 'remove_role'
+                                            ? `-${opt.targetRoleName || 'Rola'}`
+                                            : opt.actionType === 'toggle_role'
+                                            ? `🔄${opt.targetRoleName || 'Rola'}`
+                                            : '💬'}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {opt.description && (
+                                      <div className="text-[10px] text-[#949ba4]">
+                                        {opt.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    }
+
+                    return null;
+                  })
                 )}
               </div>
             </div>
