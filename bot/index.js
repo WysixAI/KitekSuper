@@ -248,23 +248,36 @@ async function syncGuildsWithDashboard() {
                 let sentV2 = false;
 
                 // 1. Próba wysłania w nowym standardzie Discord Components V2 (kontenery type 17, flags 32768)
-                if (Array.isArray(action.v2Components) && action.v2Components.length > 0) {
+                if (action.formatMode !== 'legacy' && Array.isArray(action.v2Components) && action.v2Components.length > 0) {
                   try {
-                    await targetChannel.send({
-                      flags: 32768,
-                      components: action.v2Components,
+                    const v2Res = await fetch(`https://discord.com/api/v10/channels/${targetChannel.id}/messages`, {
+                      method: 'POST',
+                      headers: {
+                        Authorization: `Bot ${client.token}`,
+                        'Content-Type': 'application/json',
+                      },
+                      body: JSON.stringify({
+                        flags: 32768,
+                        components: action.v2Components,
+                      }),
                     });
-                    sentV2 = true;
-                    console.log(
-                      `🚀 [COMPONENTS V2] Wysłano nową strukturę Discord Components v2 (kontenery type 17) na kanał #${targetChannel.name} (${targetChannel.id})`
-                    );
+
+                    if (v2Res.ok) {
+                      sentV2 = true;
+                      console.log(
+                        `🚀 [COMPONENTS V2] Wysłano nową strukturę Discord Components v2 (kontenery type 17) na kanał #${targetChannel.name} (${targetChannel.id})`
+                      );
+                    } else {
+                      const errText = await v2Res.text();
+                      console.warn(`⚠️ [COMPONENTS V2] Discord REST API zwróciło status ${v2Res.status}: ${errText}`);
+                    }
                   } catch (v2Err) {
-                    console.warn(`⚠️ [COMPONENTS V2] Błąd wysyłania V2 (${v2Err.message}), wysyłam w trybie kompatybilności...`);
+                    console.warn(`⚠️ [COMPONENTS V2] Błąd wysyłania V2 (${v2Err.message})`);
                   }
                 }
 
-                // 2. Tryb kompatybilności klasycznej (embeds + action rows)
-                if (!sentV2) {
+                // 2. Tryb kompatybilności klasycznej (embeds + action rows) - tylko gdy wybrano legacy lub gdy V2 się nie powiodło
+                if (!sentV2 && (action.formatMode === 'legacy' || !action.v2Components?.length)) {
                   const messagePayload = {
                     content: action.content || undefined,
                     embeds: action.embeds || [],

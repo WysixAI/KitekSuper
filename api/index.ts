@@ -188,6 +188,7 @@ interface PendingBotAction {
   embeds?: any[];
   components?: any[];
   v2Components?: any[];
+  formatMode?: string;
   flags?: number;
   createdAt: number;
 }
@@ -255,11 +256,11 @@ app.post('/api/bot/send-embed', async (req, res) => {
               },
             ],
           };
-          if (comp.accessory?.fileUrl) {
+          if (comp.accessory?.fileUrl && comp.accessory.fileUrl.trim().startsWith('http')) {
             secObj.accessory = {
               type: 11, // Thumbnail
               media: {
-                url: comp.accessory.fileUrl,
+                url: comp.accessory.fileUrl.trim(),
               },
             };
             if (comp.accessory.description) {
@@ -299,15 +300,15 @@ app.post('/api/bot/send-embed', async (req, res) => {
 
         // 4. Media Gallery (V2 type 12)
         if (comp.type === 'media_gallery' && Array.isArray(comp.mediaUrls) && comp.mediaUrls.length > 0) {
-          if (!imageUrl && comp.mediaUrls[0]) {
-            imageUrl = comp.mediaUrls[0];
-          }
-          const validUrls = comp.mediaUrls.filter(Boolean);
+          const validUrls = comp.mediaUrls.filter((u: string) => typeof u === 'string' && u.trim().startsWith('http'));
           if (validUrls.length > 0) {
+            if (!imageUrl) {
+              imageUrl = validUrls[0];
+            }
             v2Container.components.push({
               type: 12,
-              items: validUrls.map((u: string) => ({
-                media: { url: u },
+              items: validUrls.slice(0, 10).map((u: string) => ({
+                media: { url: u.trim() },
               })),
             });
           }
@@ -426,6 +427,7 @@ app.post('/api/bot/send-embed', async (req, res) => {
         }
       }
 
+      v2Container.components = v2Container.components.slice(0, 10);
       if (v2Container.components.length === 0) {
         v2Container.components.push({ type: 10, content: '\u200b' });
       }
@@ -553,6 +555,7 @@ app.post('/api/bot/send-embed', async (req, res) => {
     embeds,
     components: actionRows,
     v2Components: v2TopLevelComponents,
+    formatMode: formatMode || 'v2',
     flags: 32768,
     createdAt: Date.now(),
   });
