@@ -251,18 +251,20 @@ app.post('/api/bot/send-embed', async (req, res) => {
             components: [
               {
                 type: 10, // Text Display
-                content: comp.sectionContent || ' ',
+                content: comp.sectionContent?.trim() ? comp.sectionContent : '\u200b',
               },
             ],
           };
           if (comp.accessory?.fileUrl) {
             secObj.accessory = {
-              type: 11, // Thumbnail / Media
+              type: 11, // Thumbnail
               media: {
                 url: comp.accessory.fileUrl,
-                description: comp.accessory.description || undefined,
               },
             };
+            if (comp.accessory.description) {
+              secObj.accessory.description = comp.accessory.description;
+            }
           }
           v2Container.components.push(secObj);
         }
@@ -272,7 +274,7 @@ app.post('/api/bot/send-embed', async (req, res) => {
           description = description ? `${description}\n\n${comp.content}` : comp.content;
           v2Container.components.push({
             type: 10,
-            content: comp.content,
+            content: comp.content.trim() ? comp.content : '\u200b',
           });
         }
 
@@ -425,7 +427,7 @@ app.post('/api/bot/send-embed', async (req, res) => {
       }
 
       if (v2Container.components.length === 0) {
-        v2Container.components.push({ type: 10, content: ' ' });
+        v2Container.components.push({ type: 10, content: '\u200b' });
       }
       v2TopLevelComponents.push(v2Container);
 
